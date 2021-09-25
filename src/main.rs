@@ -1,200 +1,285 @@
-use iced::{
-    button, executor, scrollable, text_input, Align, Application, Button,
-    Checkbox, Clipboard, Column, Command, Container, Element, Font,
-    HorizontalAlignment, Length, Row, Scrollable, Settings, Text, TextInput,
+// On Windows platform, don't show a console when opening the app.
+#![windows_subsystem = "windows"]
+
+use druid::im::Vector;
+use druid::widget::{Button, Flex, Label, List, Scroll, TextBox};
+use druid::{
+    AppLauncher, Color, Data, Env, Lens, LocalizedString, Menu, UnitPoint,
+    Widget, WidgetExt, WindowDesc, WindowId,
 };
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+#[macro_use]
+extern crate log;
 
+mod attack;
 mod decoder;
+mod encoder;
+mod json_formatter;
+mod signature;
 
-pub fn main() -> iced::Result {
-    JwtExplorer::run(Settings::default())
+use attack::Attack;
+
+const WINDOW_TITLE: LocalizedString<AppState> =
+    LocalizedString::new("JWT Explorer");
+
+const EXPLAINER: &str = "Paste a JWT in the box below and click DECODE";
+
+#[derive(Deserialize)]
+struct JwtHeader {
+    alg: String,
+    #[allow(dead_code)]
+    typ: String,
 }
 
-struct JwtExplorer {
-    scroll: scrollable::State,
-    error: Option<String>,
-    input_text_state: text_input::State,
-    input_text: String,
-    decode_button_state: button::State,
-    jwt_text: String,
+#[derive(Clone, Data, Default, Lens)]
+struct AppState {
+    jwt_input: String,
+    jwt_header: String,
+    jwt_claims: String,
+    jwt_status: String,
+    secret: String,
+    attacks: Vector<Attack>,
 }
 
-#[derive(Clone, Debug)]
-enum Message {
-    InputTextChanged(String),
-    DecodeButton,
-}
-
-impl Application for JwtExplorer {
-    type Executor = executor::Default;
-    type Message = Message;
-    type Flags = ();
-    fn new(_flags: ()) -> (JwtExplorer, Command<Message>) {
-        (
-            JwtExplorer {
-                scroll: scrollable::State::new(),
-                error: None,
-                input_text_state: text_input::State::new(),
-                input_text: String::new(),
-                decode_button_state: button::State::new(),
-                jwt_text: String::new(),
-            },
-            Command::none(),
-        )
+impl AppState {
+    fn decode_jwt(&mut self) {
+        let decoded = decoder::decode_jwt(&self.jwt_input, &self.secret);
+        self.jwt_header = decoded.header;
+        self.jwt_claims = decoded.claims;
+        self.jwt_status = decoded.status.join("\n");
     }
 
-    fn title(&self) -> String {
-        String::from("JWT Explorer")
-    }
-
-    fn update(
-        &mut self,
-        message: Message,
-        _clipboard: &mut Clipboard,
-    ) -> Command<Message> {
-        match message {
-            Message::InputTextChanged(jwt) => {
-                self.input_text = jwt;
-            }
-            Message::DecodeButton => {
-                println!("Decode button pressed");
-                let decoded = decoder::decode_jwt(&self.input_text);
-                println!("Decoded: {:?}", decoded);
-                match decoded {
-                    Ok(_) => {
-                        self.error = None;
-                    }
-                    Err(msg) => self.error = Some(msg),
-                }
-            } /*
-              Message::Toggle => match self.state {
-                  State::Idle => {
-                      self.state = State::Ticking {
-                          last_tick: Instant::now(),
-                      };
-                  }
-                  State::Ticking { .. } => {
-                      self.state = State::Idle;
-                  }
-              },
-              Message::Tick(now) => match &mut self.state {
-                  State::Ticking { last_tick } => {
-                      self.duration += now - *last_tick;
-                      *last_tick = now;
-                  }
-                  _ => {}
-              },
-              Message::Reset => {
-                  self.duration = Duration::default();
-              }*/
+    fn generate_alg_none_attacks(&mut self) {
+        info!("Generating Alg:None attacks");
+        let attacks = attack::alg_none(&self.jwt_claims);
+        for attack in attacks {
+            self.attacks.push_back(attack);
         }
-
-        Command::none()
     }
 
-    /*fn subscription(&self) -> Subscription<Message> {
-        match self.state {
-            State::Idle => Subscription::none(),
-            State::Ticking { .. } => {
-                time::every(Duration::from_millis(10)).map(Message::Tick)
+    fn encode_and_sign(&mut self) {
+        info!("Encode and sign JWT");
+        match encoder::encode_and_sign(
+            &self.jwt_header,
+            &self.jwt_claims,
+            &self.secret,
+        ) {
+            Ok(token) => {
+                info!("Encode & sign successful");
+                self.attacks.push_back(Attack {
+                    name: self.secret.clone(),
+                    token,
+                });
+            }
+            Err(e) => {
+                warn!("Error signing token: {}", e);
             }
         }
-    }*/
+    }
+}
 
-    fn view(&mut self) -> Element<Message> {
-        let header = Text::new("JWT Explorer")
-            .horizontal_alignment(HorizontalAlignment::Center);
-        let jwt_input = TextInput::new(
-            &mut self.input_text_state,
-            "Paste a JWT here",
-            &self.input_text,
-            Message::InputTextChanged,
+pub fn main() {
+    env_logger::Builder::from_env(
+        env_logger::Env::default().default_filter_or("info"),
+    )
+    .init();
+    // describe the main window
+    let main_window = WindowDesc::new(build_root_widget())
+        .title(WINDOW_TITLE)
+        .menu(make_menu)
+        .window_size((400.0, 600.0));
+
+    // create the initial app state
+    let initial_state = AppState::default();
+
+    // start the application
+    AppLauncher::with_window(main_window)
+        .log_to_console()
+        .launch(initial_state)
+        .expect("Failed to launch application");
+}
+
+fn build_root_widget() -> impl Widget<AppState> {
+    let blurb = Label::new(EXPLAINER)
+        .with_line_break_mode(druid::widget::LineBreaking::WordWrap)
+        .padding(8.0)
+        .border(Color::grey(0.6), 2.0)
+        .rounded(5.0);
+
+    Flex::column()
+        .cross_axis_alignment(druid::widget::CrossAxisAlignment::Start)
+        .with_child(blurb)
+        .with_spacer(24.0)
+        .with_flex_child(
+            Flex::row()
+                .with_flex_child(
+                    TextBox::new()
+                        .with_placeholder("Paste JWT here")
+                        .expand_width()
+                        .lens(AppState::jwt_input),
+                    1.0,
+                )
+                .with_child(Button::new("Decode").on_click(
+                    |_, state: &mut AppState, _: &_| state.decode_jwt(),
+                ))
+                //.with_spacer(20.0)
+                .padding(20.0),
+            1.0,
         )
-        .padding(15)
-        .size(30)
-        .on_submit(Message::DecodeButton);
+        .with_default_spacer()
+        .with_flex_child(
+            Flex::row()
+                .with_flex_child(
+                    Flex::column()
+                        .with_flex_child(
+                            TextBox::multiline()
+                                .with_placeholder("Status")
+                                .disabled_if(|_, _| true)
+                                .lens(AppState::jwt_status)
+                                .expand_width()
+                                .expand_height(),
+                            1.0,
+                        )
+                        .with_flex_child(
+                            TextBox::multiline()
+                                .with_placeholder("Header")
+                                .lens(AppState::jwt_header)
+                                .expand_width()
+                                .expand_height(),
+                            1.0,
+                        )
+                        .with_flex_child(
+                            TextBox::multiline()
+                                .with_placeholder("Claims")
+                                .lens(AppState::jwt_claims)
+                                .expand_width()
+                                .expand_height(),
+                            1.0,
+                        ),
+                    1.0,
+                )
+                .with_default_spacer()
+                .with_flex_child(
+                    Flex::column()
+                        .with_flex_child(
+                            TextBox::new()
+                                .with_placeholder("secret")
+                                .expand_width()
+                                .lens(AppState::secret),
+                            1.0,
+                        )
+                        .with_child(
+                            Flex::row()
+                                .with_child(Label::new("Attack: "))
+                                .with_child(Button::new("Alg: None").on_click(
+                                    |_, state: &mut AppState, _: &_| {
+                                        state.generate_alg_none_attacks()
+                                    },
+                                )),
+                        )
+                        .with_child(Button::new("Encode and sign").on_click(
+                            |_, state: &mut AppState, _: &_| {
+                                state.encode_and_sign()
+                            },
+                        ))
+                        .fix_width(150.0),
+                    1.0,
+                )
+                .expand_width(),
+            1.0,
+        )
+        .with_flex_child(
+            Scroll::new(List::new(|| {
+                Flex::row()
+                    .with_flex_child(
+                        Label::new(|item: &Attack, _env: &_| {
+                            item.name.to_string()
+                        }),
+                        1.0,
+                    )
+                    .with_flex_child(
+                        TextBox::new().expand_width().lens(Attack::token),
+                        1.0,
+                    )
+                    .with_flex_child(Button::new("Copy"), 1.0)
+                    .align_vertical(UnitPoint::LEFT)
+                    .padding(10.0)
+                    .expand()
+                    .height(50.0)
+                    .background(Color::rgb(1.0, 0.5, 0.5))
+            }))
+            .expand()
+            .lens(AppState::attacks),
+            1.0,
+        )
+        .expand()
+        .padding(8.0)
+}
 
-        let button = |state, label, style| {
-            Button::new(
-                state,
-                Text::new(label)
-                    .horizontal_alignment(HorizontalAlignment::Center),
-            )
-            .min_width(80)
-            .padding(10)
-            .style(style)
+#[allow(unused_assignments, unused_mut)]
+fn make_menu<T: Data>(
+    _window: Option<WindowId>,
+    _data: &AppState,
+    _env: &Env,
+) -> Menu<T> {
+    let mut base = Menu::empty();
+    #[cfg(target_os = "macos")]
+    {
+        base = base.entry(druid::platform_menus::mac::application::default())
+    }
+    #[cfg(any(target_os = "windows", target_os = "linux"))]
+    {
+        base = base.entry(druid::platform_menus::win::file::default());
+    }
+    base.entry(
+        Menu::new(LocalizedString::new("common-menu-edit-menu"))
+            .entry(druid::platform_menus::common::undo())
+            .entry(druid::platform_menus::common::redo())
+            .separator()
+            .entry(druid::platform_menus::common::cut())
+            .entry(druid::platform_menus::common::copy())
+            .entry(druid::platform_menus::common::paste()),
+    )
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    const JWT_HS384: &str = "\
+        eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.\
+        eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnR\
+        ydWUsImlhdCI6MTUxNjIzOTAyMn0.IpWe_5UPstkFk6Wt8UNv2XillMQXRcVzr6i\
+        WcRF-50VDwq40g0xzLaV-Zvj1yHx6\
+        ";
+    const JWT_HS384_DECODED: (&str, &str) = (
+        r#"{
+  "alg": "HS384",
+  "typ": "JWT"
+}"#,
+        r#"{
+  "sub": "1234567890",
+  "name": "John Doe",
+  "admin": true,
+  "iat": 1516239022
+}"#,
+    );
+    pub fn init() {
+        let _ = env_logger::builder()
+            .is_test(true)
+            .filter(None, log::LevelFilter::Debug)
+            .try_init();
+    }
+
+    #[test]
+    fn decode_jwt() {
+        init();
+        let mut state = AppState {
+            jwt_input: JWT_HS384.to_string(),
+            ..Default::default()
         };
-
-        let decode_button = button(
-            &mut self.decode_button_state,
-            "Decode",
-            style::Button::Primary,
-        )
-        .on_press(Message::DecodeButton);
-
-        /*let toggle_button = {
-            let (label, color) = match self.state {
-                State::Idle => ("Start", style::Button::Primary),
-                State::Ticking { .. } => ("Stop", style::Button::Destructive),
-            };
-
-            button(&mut self.toggle, label, color).on_press(Message::Toggle)
-        };
-
-        let reset_button =
-            button(&mut self.reset, "Reset", style::Button::Secondary)
-                .on_press(Message::Reset);*/
-
-        let decode_row =
-            Row::new().spacing(20).push(jwt_input).push(decode_button);
-
-            let big_edit_box = Text::new("hi");
-
-            let attack_mode_buttons_column = Column::new().spacing(20);
-
-        let big_edit_box_row = Row::new().spacing(20).push(big_edit_box).push(attack_mode_buttons_column);
-
-        let mut content = Column::new()
-            .align_items(Align::Center)
-            .spacing(20)
-            .push(header).push(decode_row);
-
-        if let Some(err) = &self.error {
-            let error_msg = Text::new(err);
-            content = content.push(error_msg);
-        }
-        content = content.push(big_edit_box_row);
-
-        Scrollable::new(&mut self.scroll)
-            .padding(40)
-            .push(Container::new(content).width(Length::Fill).center_x())
-            .into()
-    }
-}
-
-mod style {
-    use iced::{button, Background, Color, Vector};
-
-    pub enum Button {
-        Primary,
-        Secondary,
-        Destructive,
-    }
-
-    impl button::StyleSheet for Button {
-        fn active(&self) -> button::Style {
-            button::Style {
-                background: Some(Background::Color(match self {
-                    Button::Primary => Color::from_rgb(0.11, 0.42, 0.87),
-                    Button::Secondary => Color::from_rgb(0.5, 0.5, 0.5),
-                    Button::Destructive => Color::from_rgb(0.8, 0.2, 0.2),
-                })),
-                border_radius: 12.0,
-                shadow_offset: Vector::new(1.0, 1.0),
-                text_color: Color::WHITE,
-                ..button::Style::default()
-            }
-        }
+        state.decode_jwt();
+        assert_eq!(state.jwt_header, JWT_HS384_DECODED.0);
+        assert_eq!(state.jwt_claims, JWT_HS384_DECODED.1);
     }
 }
