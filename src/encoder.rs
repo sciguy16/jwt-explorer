@@ -1,4 +1,4 @@
-use crate::JwtHeader;
+use crate::signature::SignatureTypes;
 use base64::URL_SAFE_NO_PAD;
 use serde_json::Value;
 
@@ -29,18 +29,7 @@ pub fn encode_and_sign(
     header: &str,
     claims: &str,
     secret: &str,
-) -> Result<String, String> {
-    let parsed_header: JwtHeader =
-        serde_json::from_str(header).map_err(|e| e.to_string())?;
-
-    encode_and_sign_with_hash(header, claims, secret, &parsed_header.alg)
-}
-
-pub fn encode_and_sign_with_hash(
-    header: &str,
-    claims: &str,
-    secret: &str,
-    hash_type: &str,
+    hash_type: SignatureTypes,
 ) -> Result<String, String> {
     let payload = encode_payload(header, claims);
     let signature =
@@ -104,7 +93,9 @@ mod test {
             "tpOT8CJlT9_BgojqRtFypZt2yIbh0rPzO1hGlUloe4fVz4wdIq3pdGejx1cY3Yt8"
         );
 
-        let encoded = encode_and_sign(header, claims, secret).unwrap();
+        let encoded =
+            encode_and_sign(header, claims, secret, SignatureTypes::Auto)
+                .unwrap();
         assert_eq!(encoded, target);
     }
 }

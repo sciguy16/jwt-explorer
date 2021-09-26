@@ -1,5 +1,8 @@
 //use jwt::VerifyWithKey;
-use crate::{signature, JwtHeader};
+use crate::{
+    signature::{self, SignatureTypes},
+    JwtHeader,
+};
 use base64::URL_SAFE_NO_PAD;
 
 #[derive(Default)]
@@ -30,23 +33,26 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str) -> Jwt {
         // verify it
         if let Ok(header_decoded) = serde_json::from_str::<JwtHeader>(signature)
         {
-            // Header decoded successfully
-            if let Ok(signature_to_compare) = signature::calc_signature(
-                &format!(
-                    "{}.{}",
-                    header.unwrap_or_default(),
-                    claims.unwrap_or_default()
-                ),
-                secret,
-                &header_decoded.typ,
-            ) {
-                if signature_to_compare == signature {
-                    info!("Valid signature!");
-                    jwt.status.push("Signature valid".to_string());
-                } else {
-                    info!("Signature verification failed");
-                    jwt.status
-                        .push("Signature verification failed".to_string());
+            if let Some(sig_type) = SignatureTypes::from_header(&header_decoded)
+            {
+                // Header decoded successfully
+                if let Ok(signature_to_compare) = signature::calc_signature(
+                    &format!(
+                        "{}.{}",
+                        header.unwrap_or_default(),
+                        claims.unwrap_or_default()
+                    ),
+                    secret,
+                    sig_type,
+                ) {
+                    if signature_to_compare == signature {
+                        info!("Valid signature!");
+                        jwt.status.push("Signature valid".to_string());
+                    } else {
+                        info!("Signature verification failed");
+                        jwt.status
+                            .push("Signature verification failed".to_string());
+                    }
                 }
             }
         } else {

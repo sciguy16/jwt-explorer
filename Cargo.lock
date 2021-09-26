@@ -377,7 +377,7 @@ dependencies = [
 [[package]]
 name = "druid"
 version = "0.7.0"
-source = "git+https://github.com/linebender/druid#82ec0be30c74fd1867c2cf76fd9afa0c98439afc"
+source = "git+https://github.com/linebender/druid#0223076bc72084a197772fab2de579be6acb94f8"
 dependencies = [
  "console_error_panic_hook",
  "druid-derive",
@@ -399,7 +399,7 @@ dependencies = [
 [[package]]
 name = "druid-derive"
 version = "0.4.0"
-source = "git+https://github.com/linebender/druid#82ec0be30c74fd1867c2cf76fd9afa0c98439afc"
+source = "git+https://github.com/linebender/druid#0223076bc72084a197772fab2de579be6acb94f8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -409,7 +409,7 @@ dependencies = [
 [[package]]
 name = "druid-shell"
 version = "0.7.0"
-source = "git+https://github.com/linebender/druid#82ec0be30c74fd1867c2cf76fd9afa0c98439afc"
+source = "git+https://github.com/linebender/druid#0223076bc72084a197772fab2de579be6acb94f8"
 dependencies = [
  "anyhow",
  "bitflags",
@@ -959,6 +959,8 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
@@ -1541,6 +1543,9 @@ name = "strum"
 version = "0.21.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "aaf86bbcfd1fa9670b7a129f64fc0c9fcbbfe4f1bc4210e9e98fe71ffc12cde2"
+dependencies = [
+ "strum_macros",
+]
 
 [[package]]
 name = "strum_macros"
@@ -1629,9 +1634,9 @@ dependencies = [
 
 [[package]]
 name = "time"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3e0a10c9a9fb3a5dce8c2239ed670f1a2569fcf42da035f5face1b19860d52b0"
+checksum = "cde1cf55178e0293453ba2cca0d5f8392a922e52aa958aee9c28ed02becc6d03"
 dependencies = [
  "libc",
 ]

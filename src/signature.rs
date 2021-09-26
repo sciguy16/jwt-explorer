@@ -1,14 +1,68 @@
 use base64::URL_SAFE_NO_PAD;
 use crypto_hashes::sha2::{Sha256, Sha384, Sha512};
+use druid::Data;
 use hmac::{Hmac, Mac, NewMac};
+use std::fmt::{self, Display};
+use strum::IntoEnumIterator;
+use strum_macros::EnumIter;
+
+use crate::JwtHeader;
+
+#[derive(
+    Data, Copy, Clone, EnumIter, Eq, PartialEq, Ord, PartialOrd, Debug,
+)]
+pub enum SignatureTypes {
+    Auto,
+    Hs256,
+    Hs384,
+    Hs512,
+}
+
+impl Default for SignatureTypes {
+    fn default() -> Self {
+        SignatureTypes::Auto
+    }
+}
+
+impl Display for SignatureTypes {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            fmt,
+            "{}",
+            match self {
+                SignatureTypes::Auto => "Auto".to_string(),
+                s => format!("{:?}", s).to_uppercase(),
+            }
+        )
+    }
+}
+
+impl SignatureTypes {
+    pub fn from_header(header: &JwtHeader) -> Option<Self> {
+        let header = header.alg.to_uppercase();
+        let mut ret = SignatureTypes::Auto;
+        for sig in SignatureTypes::iter() {
+            if header == sig.to_string() {
+                ret = sig;
+                break;
+            }
+        }
+        if ret == SignatureTypes::Auto {
+            None
+        } else {
+            Some(ret)
+        }
+    }
+}
 
 pub fn calc_signature(
     payload: &str,
     secret: &str,
-    hash_type: &str,
+    hash_type: SignatureTypes,
 ) -> Result<String, String> {
-    match hash_type.to_lowercase().as_str() {
-        "hs256" => {
+    use SignatureTypes::*;
+    match hash_type {
+        Hs256 => {
             let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes())
                 .map_err(|e| e.to_string())?;
             mac.update(payload.as_bytes());
@@ -19,7 +73,7 @@ pub fn calc_signature(
 
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
         }
-        "hs384" => {
+        Hs384 => {
             let mut mac = Hmac::<Sha384>::new_from_slice(secret.as_bytes())
                 .map_err(|e| e.to_string())?;
             mac.update(payload.as_bytes());
@@ -28,7 +82,7 @@ pub fn calc_signature(
 
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
         }
-        "hs512" => {
+        Hs512 => {
             let mut mac = Hmac::<Sha512>::new_from_slice(secret.as_bytes())
                 .map_err(|e| e.to_string())?;
             mac.update(payload.as_bytes());

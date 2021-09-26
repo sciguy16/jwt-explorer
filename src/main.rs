@@ -2,12 +2,13 @@
 #![windows_subsystem = "windows"]
 
 use druid::im::Vector;
-use druid::widget::{Button, Flex, Label, List, Scroll, TextBox};
+use druid::widget::{Button, Flex, Label, List, RadioGroup, Scroll, TextBox};
 use druid::{
-    AppLauncher, Color, Data, Env, Lens, LocalizedString, Menu, UnitPoint,
-    Widget, WidgetExt, WindowDesc, WindowId,
+    AppLauncher, Application, Color, Data, Env, Lens, LocalizedString, Menu,
+    UnitPoint, Widget, WidgetExt, WindowDesc, WindowId,
 };
 use serde::Deserialize;
+use strum::IntoEnumIterator;
 #[macro_use]
 extern crate log;
 
@@ -18,14 +19,16 @@ mod json_formatter;
 mod signature;
 
 use attack::Attack;
+use signature::SignatureTypes;
 
 const WINDOW_TITLE: LocalizedString<AppState> =
     LocalizedString::new("JWT Explorer");
 
-const EXPLAINER: &str = "Paste a JWT in the box below and click DECODE";
+const EXPLAINER: &str = "Paste a JWT in the box below and click DECODE
+Hint: pop the JWT into Hashcat to check for weak keys";
 
 #[derive(Deserialize)]
-struct JwtHeader {
+pub struct JwtHeader {
     alg: String,
     #[allow(dead_code)]
     typ: String,
@@ -38,6 +41,7 @@ struct AppState {
     jwt_claims: String,
     jwt_status: String,
     secret: String,
+    signature_type: SignatureTypes,
     attacks: Vector<Attack>,
 }
 
@@ -53,7 +57,7 @@ impl AppState {
         info!("Generating Alg:None attacks");
         let attacks = attack::alg_none(&self.jwt_claims);
         for attack in attacks {
-            self.attacks.push_back(attack);
+            self.attacks.push_front(attack);
         }
     }
 
@@ -63,10 +67,11 @@ impl AppState {
             &self.jwt_header,
             &self.jwt_claims,
             &self.secret,
+            self.signature_type,
         ) {
             Ok(token) => {
                 info!("Encode & sign successful");
-                self.attacks.push_back(Attack {
+                self.attacks.push_front(Attack {
                     name: self.secret.clone(),
                     token,
                 });
@@ -87,7 +92,7 @@ pub fn main() {
     let main_window = WindowDesc::new(build_root_widget())
         .title(WINDOW_TITLE)
         .menu(make_menu)
-        .window_size((400.0, 600.0));
+        .window_size((600.0, 800.0));
 
     // create the initial app state
     let initial_state = AppState::default();
@@ -122,6 +127,7 @@ fn build_root_widget() -> impl Widget<AppState> {
                 .with_child(Button::new("Decode").on_click(
                     |_, state: &mut AppState, _: &_| state.decode_jwt(),
                 ))
+                .expand_width()
                 //.with_spacer(20.0)
                 .padding(20.0),
             1.0,
@@ -177,6 +183,13 @@ fn build_root_widget() -> impl Widget<AppState> {
                                     },
                                 )),
                         )
+                        .with_child(
+                            RadioGroup::new(
+                                SignatureTypes::iter()
+                                    .map(|s| (s.to_string(), s)),
+                            )
+                            .lens(AppState::signature_type),
+                        )
                         .with_child(Button::new("Encode and sign").on_click(
                             |_, state: &mut AppState, _: &_| {
                                 state.encode_and_sign()
@@ -191,28 +204,38 @@ fn build_root_widget() -> impl Widget<AppState> {
         .with_flex_child(
             Scroll::new(List::new(|| {
                 Flex::row()
-                    .with_flex_child(
+                    .with_child(
                         Label::new(|item: &Attack, _env: &_| {
                             item.name.to_string()
                         }),
-                        1.0,
+                        //1.0,
                     )
                     .with_flex_child(
                         TextBox::new().expand_width().lens(Attack::token),
                         1.0,
                     )
-                    .with_flex_child(Button::new("Copy"), 1.0)
-                    .align_vertical(UnitPoint::LEFT)
+                    .with_child(Button::new("Copy").on_click(
+                        |_, atk: &mut Attack, _: &_| {
+                            debug!("Copy: {}", atk.token);
+                            Application::global()
+                                .clipboard()
+                                .put_string(atk.token.clone());
+                        },
+                    ))
+                    .align_horizontal(UnitPoint::CENTER)
+                    //.fix_width(350.0)
                     .padding(10.0)
-                    .expand()
-                    .height(50.0)
+                    .expand_width()
+                    //.height(50.0)
                     .background(Color::rgb(1.0, 0.5, 0.5))
             }))
-            .expand()
+            .vertical()
+            //.fix_width(350.0)
+            .expand_width()
             .lens(AppState::attacks),
             1.0,
         )
-        .expand()
+        .expand_width()
         .padding(8.0)
 }
 
