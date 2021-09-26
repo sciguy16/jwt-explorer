@@ -1,6 +1,5 @@
 use base64::URL_SAFE_NO_PAD;
 use crypto_hashes::sha2::{Sha256, Sha384, Sha512};
-use druid::Data;
 use hmac::{Hmac, Mac, NewMac};
 use std::fmt::{self, Display};
 use strum::IntoEnumIterator;
@@ -8,9 +7,7 @@ use strum_macros::EnumIter;
 
 use crate::JwtHeader;
 
-#[derive(
-    Data, Copy, Clone, EnumIter, Eq, PartialEq, Ord, PartialOrd, Debug,
-)]
+#[derive(Copy, Clone, EnumIter, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub enum SignatureTypes {
     Auto,
     Hs256,
@@ -108,7 +105,8 @@ mod test {
             "eyJhbGciOiJIUzI1NiIsInR5cGUiOiJKV1QifQ.eyJoZWxsbyI6IndvcmxkIn0";
         let secret = "password";
 
-        let signature = calc_signature(payload, secret, "HS256").unwrap();
+        let signature =
+            calc_signature(payload, secret, SignatureTypes::Hs256).unwrap();
 
         assert_eq!(signature, "jW6hG22ajnhgpvKKvkWUVI8CYobL7DOdmp6KlGYAfZ8");
     }
@@ -121,7 +119,8 @@ mod test {
             "eyJhbGciOiJIUzM4NCIsInR5cGUiOiJKV1QifQ.eyJoZWxsbyI6IndvcmxkIn0";
         let secret = "password";
 
-        let signature = calc_signature(payload, secret, "HS384").unwrap();
+        let signature =
+            calc_signature(payload, secret, SignatureTypes::Hs384).unwrap();
 
         assert_eq!(
             signature,
@@ -137,7 +136,8 @@ mod test {
             "eyJhbGciOiJIUzUxMiIsInR5cGUiOiJKV1QifQ.eyJoZWxsbyI6IndvcmxkIn0";
         let secret = "password";
 
-        let signature = calc_signature(payload, secret, "HS512").unwrap();
+        let signature =
+            calc_signature(payload, secret, SignatureTypes::Hs512).unwrap();
 
         assert_eq!(
             signature,

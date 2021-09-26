@@ -1,12 +1,7 @@
 // On Windows platform, don't show a console when opening the app.
 #![windows_subsystem = "windows"]
 
-use druid::im::Vector;
-use druid::widget::{Button, Flex, Label, List, RadioGroup, Scroll, TextBox};
-use druid::{
-    AppLauncher, Application, Color, Data, Env, Lens, LocalizedString, Menu,
-    UnitPoint, Widget, WidgetExt, WindowDesc, WindowId,
-};
+use eframe::{egui, epi};
 use serde::Deserialize;
 use strum::IntoEnumIterator;
 #[macro_use]
@@ -21,12 +16,6 @@ mod signature;
 use attack::Attack;
 use signature::SignatureTypes;
 
-const WINDOW_TITLE: LocalizedString<AppState> =
-    LocalizedString::new("JWT Explorer");
-
-const EXPLAINER: &str = "Paste a JWT in the box below and click DECODE
-Hint: pop the JWT into Hashcat to check for weak keys";
-
 #[derive(Deserialize)]
 pub struct JwtHeader {
     alg: String,
@@ -34,7 +23,7 @@ pub struct JwtHeader {
     typ: String,
 }
 
-#[derive(Clone, Data, Default, Lens)]
+#[derive(Clone, Default)]
 struct AppState {
     jwt_input: String,
     jwt_header: String,
@@ -42,44 +31,111 @@ struct AppState {
     jwt_status: String,
     secret: String,
     signature_type: SignatureTypes,
-    attacks: Vector<Attack>,
+    attacks: Vec<Attack>,
 }
 
-impl AppState {
-    fn decode_jwt(&mut self) {
-        let decoded = decoder::decode_jwt(&self.jwt_input, &self.secret);
-        self.jwt_header = decoded.header;
-        self.jwt_claims = decoded.claims;
-        self.jwt_status = decoded.status.join("\n");
+impl epi::App for AppState {
+    fn name(&self) -> &str {
+        "JWT Explorer"
     }
 
-    fn generate_alg_none_attacks(&mut self) {
-        info!("Generating Alg:None attacks");
-        let attacks = attack::alg_none(&self.jwt_claims);
-        for attack in attacks {
-            self.attacks.push_front(attack);
-        }
-    }
+    fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+        //let Self { name, age } = self;
+        let Self {
+            jwt_input,
+            jwt_header,
+            jwt_claims,
+            jwt_status,
+            secret,
+            signature_type,
+            attacks,
+        } = self;
 
-    fn encode_and_sign(&mut self) {
-        info!("Encode and sign JWT");
-        match encoder::encode_and_sign(
-            &self.jwt_header,
-            &self.jwt_claims,
-            &self.secret,
-            self.signature_type,
-        ) {
-            Ok(token) => {
-                info!("Encode & sign successful");
-                self.attacks.push_front(Attack {
-                    name: self.secret.clone(),
-                    token,
+        egui::CentralPanel::default().show(ctx, |ui| {
+            ui.heading("JWT Explorer");
+            ui.label("Hint: pop the JWT into Hashcat to check for weak keys");
+            ui.horizontal(|ui| {
+                ui.label("JWT: ");
+                ui.text_edit_singleline(jwt_input);
+                if ui.button("Decode").clicked() {
+                    info!("Decode clicked");
+                    let decoded = decoder::decode_jwt(jwt_input, secret);
+                    *jwt_header = decoded.header;
+                    *jwt_claims = decoded.claims;
+                    *jwt_status = decoded.status.join("\n");
+                }
+            });
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    ui.text_edit_multiline(jwt_status);
+                    ui.text_edit_multiline(jwt_header);
+                    ui.text_edit_multiline(jwt_claims);
+                });
+                ui.vertical(|ui| {
+                    ui.horizontal(|ui| {
+                        ui.label("Secret: ");
+                        ui.text_edit_singleline(secret);
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Attacks: ");
+                        if ui.button("Alg:none").clicked() {
+                            info!("Generating Alg:None attacks");
+                            let generated_attacks =
+                                attack::alg_none(jwt_claims);
+                            for attack in generated_attacks {
+                                attacks.push(attack);
+                            }
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        ui.label("Signature type: ");
+                        egui::ComboBox::from_label("Signature type:")
+                            .selected_text(format!("{}", signature_type))
+                            .show_ui(ui, |ui| {
+                                for sig in SignatureTypes::iter() {
+                                    ui.selectable_value(
+                                        signature_type,
+                                        sig,
+                                        format!("{}", sig),
+                                    );
+                                }
+                            });
+                    });
+                    if ui.button("Encode and sign").clicked() {
+                        info!("Encode and sign JWT");
+                        match encoder::encode_and_sign(
+                            jwt_header,
+                            jwt_claims,
+                            secret,
+                            *signature_type,
+                        ) {
+                            Ok(token) => {
+                                info!("Encode & sign successful");
+                                attacks.push(Attack {
+                                    name: secret.clone(),
+                                    token,
+                                });
+                            }
+                            Err(e) => {
+                                warn!("Error signing token: {}", e);
+                            }
+                        }
+                    }
+                });
+            });
+
+            ui.label("Generated attack payloads:");
+
+            for atk in attacks {
+                ui.horizontal(|ui| {
+                    ui.label(format!("{}: ", atk.name));
+                    ui.text_edit_singleline(&mut atk.token);
                 });
             }
-            Err(e) => {
-                warn!("Error signing token: {}", e);
-            }
-        }
+        });
+
+        // Resize the native window to be just the size we need it to be:
+        frame.set_window_size(ctx.used_size());
     }
 }
 
@@ -88,181 +144,9 @@ pub fn main() {
         env_logger::Env::default().default_filter_or("info"),
     )
     .init();
-    // describe the main window
-    let main_window = WindowDesc::new(build_root_widget())
-        .title(WINDOW_TITLE)
-        .menu(make_menu)
-        .window_size((600.0, 800.0));
 
-    // create the initial app state
-    let initial_state = AppState::default();
-
-    // start the application
-    AppLauncher::with_window(main_window)
-        .log_to_console()
-        .launch(initial_state)
-        .expect("Failed to launch application");
-}
-
-fn build_root_widget() -> impl Widget<AppState> {
-    let blurb = Label::new(EXPLAINER)
-        .with_line_break_mode(druid::widget::LineBreaking::WordWrap)
-        .padding(8.0)
-        .border(Color::grey(0.6), 2.0)
-        .rounded(5.0);
-
-    Flex::column()
-        .cross_axis_alignment(druid::widget::CrossAxisAlignment::Start)
-        .with_child(blurb)
-        .with_spacer(24.0)
-        .with_flex_child(
-            Flex::row()
-                .with_flex_child(
-                    TextBox::new()
-                        .with_placeholder("Paste JWT here")
-                        .expand_width()
-                        .lens(AppState::jwt_input),
-                    1.0,
-                )
-                .with_child(Button::new("Decode").on_click(
-                    |_, state: &mut AppState, _: &_| state.decode_jwt(),
-                ))
-                .expand_width()
-                //.with_spacer(20.0)
-                .padding(20.0),
-            1.0,
-        )
-        .with_default_spacer()
-        .with_flex_child(
-            Flex::row()
-                .with_flex_child(
-                    Flex::column()
-                        .with_flex_child(
-                            TextBox::multiline()
-                                .with_placeholder("Status")
-                                .disabled_if(|_, _| true)
-                                .lens(AppState::jwt_status)
-                                .expand_width()
-                                .expand_height(),
-                            1.0,
-                        )
-                        .with_flex_child(
-                            TextBox::multiline()
-                                .with_placeholder("Header")
-                                .lens(AppState::jwt_header)
-                                .expand_width()
-                                .expand_height(),
-                            1.0,
-                        )
-                        .with_flex_child(
-                            TextBox::multiline()
-                                .with_placeholder("Claims")
-                                .lens(AppState::jwt_claims)
-                                .expand_width()
-                                .expand_height(),
-                            1.0,
-                        ),
-                    1.0,
-                )
-                .with_default_spacer()
-                .with_flex_child(
-                    Flex::column()
-                        .with_flex_child(
-                            TextBox::new()
-                                .with_placeholder("secret")
-                                .expand_width()
-                                .lens(AppState::secret),
-                            1.0,
-                        )
-                        .with_child(
-                            Flex::row()
-                                .with_child(Label::new("Attack: "))
-                                .with_child(Button::new("Alg: None").on_click(
-                                    |_, state: &mut AppState, _: &_| {
-                                        state.generate_alg_none_attacks()
-                                    },
-                                )),
-                        )
-                        .with_child(
-                            RadioGroup::new(
-                                SignatureTypes::iter()
-                                    .map(|s| (s.to_string(), s)),
-                            )
-                            .lens(AppState::signature_type),
-                        )
-                        .with_child(Button::new("Encode and sign").on_click(
-                            |_, state: &mut AppState, _: &_| {
-                                state.encode_and_sign()
-                            },
-                        ))
-                        .fix_width(150.0),
-                    1.0,
-                )
-                .expand_width(),
-            1.0,
-        )
-        .with_flex_child(
-            Scroll::new(List::new(|| {
-                Flex::row()
-                    .with_child(
-                        Label::new(|item: &Attack, _env: &_| {
-                            item.name.to_string()
-                        }),
-                        //1.0,
-                    )
-                    .with_flex_child(
-                        TextBox::new().expand_width().lens(Attack::token),
-                        1.0,
-                    )
-                    .with_child(Button::new("Copy").on_click(
-                        |_, atk: &mut Attack, _: &_| {
-                            debug!("Copy: {}", atk.token);
-                            Application::global()
-                                .clipboard()
-                                .put_string(atk.token.clone());
-                        },
-                    ))
-                    .align_horizontal(UnitPoint::CENTER)
-                    //.fix_width(350.0)
-                    .padding(10.0)
-                    .expand_width()
-                    //.height(50.0)
-                    .background(Color::rgb(1.0, 0.5, 0.5))
-            }))
-            .vertical()
-            //.fix_width(350.0)
-            .expand_width()
-            .lens(AppState::attacks),
-            1.0,
-        )
-        .expand_width()
-        .padding(8.0)
-}
-
-#[allow(unused_assignments, unused_mut)]
-fn make_menu<T: Data>(
-    _window: Option<WindowId>,
-    _data: &AppState,
-    _env: &Env,
-) -> Menu<T> {
-    let mut base = Menu::empty();
-    #[cfg(target_os = "macos")]
-    {
-        base = base.entry(druid::platform_menus::mac::application::default())
-    }
-    #[cfg(any(target_os = "windows", target_os = "linux"))]
-    {
-        base = base.entry(druid::platform_menus::win::file::default());
-    }
-    base.entry(
-        Menu::new(LocalizedString::new("common-menu-edit-menu"))
-            .entry(druid::platform_menus::common::undo())
-            .entry(druid::platform_menus::common::redo())
-            .separator()
-            .entry(druid::platform_menus::common::cut())
-            .entry(druid::platform_menus::common::copy())
-            .entry(druid::platform_menus::common::paste()),
-    )
+    let options = eframe::NativeOptions::default();
+    eframe::run_native(Box::new(AppState::default()), options);
 }
 
 #[cfg(test)]
@@ -297,12 +181,11 @@ mod test {
     #[test]
     fn decode_jwt() {
         init();
-        let mut state = AppState {
-            jwt_input: JWT_HS384.to_string(),
-            ..Default::default()
-        };
-        state.decode_jwt();
-        assert_eq!(state.jwt_header, JWT_HS384_DECODED.0);
-        assert_eq!(state.jwt_claims, JWT_HS384_DECODED.1);
+
+        let jwt_input = JWT_HS384.to_string();
+        let secret = "";
+        let decoded = decoder::decode_jwt(&jwt_input, secret);
+        assert_eq!(decoded.header, JWT_HS384_DECODED.0);
+        assert_eq!(decoded.claims, JWT_HS384_DECODED.1);
     }
 }

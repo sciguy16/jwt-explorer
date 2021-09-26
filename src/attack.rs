@@ -1,7 +1,6 @@
 use crate::encoder::encode_payload;
-use druid::{Data, Lens};
 
-#[derive(Clone, Data, Debug, Default, Lens, PartialEq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct Attack {
     pub name: String,
     pub token: String,
