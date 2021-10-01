@@ -88,8 +88,13 @@ impl epi::App for AppState {
                         }
                     });
                     ui.horizontal(|ui| {
+                        if ui.button("Expiry now+24h").clicked() {
+                            info!("Set expiry to the future");
+                        }
+                    });
+                    ui.horizontal(|ui| {
                         ui.label("Signature type: ");
-                        egui::ComboBox::from_label("Signature type:")
+                        egui::ComboBox::from_label("")
                             .selected_text(format!("{}", signature_type))
                             .show_ui(ui, |ui| {
                                 for sig in SignatureTypes::iter() {
@@ -130,6 +135,9 @@ impl epi::App for AppState {
                 ui.horizontal(|ui| {
                     ui.label(format!("{}: ", atk.name));
                     ui.text_edit_singleline(&mut atk.token);
+                    if ui.button("Copy").clicked() {
+                        println!("Copy this text: {}", atk.token);
+                    }
                 });
             }
         });
