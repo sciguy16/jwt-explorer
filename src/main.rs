@@ -3,7 +3,7 @@
 
 use eframe::{egui, epi};
 use serde::Deserialize;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::Duration;
 use strum::IntoEnumIterator;
 #[macro_use]
 extern crate log;
@@ -16,8 +16,16 @@ mod json_formatter;
 mod signature;
 
 use attack::Attack;
-use json_editor::replace_field;
+use json_editor::{update_time, TimeOffset};
 use signature::SignatureTypes;
+
+macro_rules! log_err {
+    ($res:expr) => {
+        if let Err(e) = $res {
+            warn!("{}", e);
+        }
+    };
+}
 
 #[derive(Deserialize)]
 pub struct JwtHeader {
@@ -91,28 +99,69 @@ impl epi::App for AppState {
                         }
                     });
                     ui.horizontal(|ui| {
-                        if ui.button("Expiry now+24h").clicked() {
-                            info!("Set expiry to the future");
-
-                            let now_plus_24h = SystemTime::now()
-                                .checked_add(Duration::from_secs(60 * 60 * 24))
-                                .expect("Time calculation error")
-                                .duration_since(UNIX_EPOCH)
-                                .expect("Negative time somehow")
-                                .as_secs();
-
-                            info!("now plus 24h is {}", now_plus_24h);
-
-                            // Try to replace the exp field with the
-                            // calculated value
-                            if let Err(e) =
-                                replace_field(jwt_claims, "exp", now_plus_24h)
-                            {
-                                warn!("{}", e);
-                            }
-                            //self.jwt_claims = EXP_REGEX
-                            //  .replace(&self.jwt_claims, now_plus_24h)
-                            //.to_string();
+                        use TimeOffset::*;
+                        let field = "iat";
+                        ui.label("iat:");
+                        if ui.button("-24h").clicked() {
+                            log_err!(update_time(
+                                jwt_claims,
+                                field,
+                                Minus(Duration::from_secs(60 * 60 * 24)),
+                            ));
+                        }
+                        if ui.button("+24h").clicked() {
+                            log_err!(update_time(
+                                jwt_claims,
+                                field,
+                                Plus(Duration::from_secs(60 * 60 * 24)),
+                            ));
+                        }
+                        if ui.button("+7d").clicked() {
+                            log_err!(update_time(
+                                jwt_claims,
+                                field,
+                                Plus(Duration::from_secs(60 * 60 * 24 * 7)),
+                            ));
+                        }
+                        if ui.button("+365d").clicked() {
+                            log_err!(update_time(
+                                jwt_claims,
+                                field,
+                                Plus(Duration::from_secs(60 * 60 * 24 * 365)),
+                            ));
+                        }
+                    });
+                    ui.horizontal(|ui| {
+                        use TimeOffset::*;
+                        let field = "exp";
+                        ui.label("exp:");
+                        if ui.button("-24h").clicked() {
+                            log_err!(update_time(
+                                jwt_claims,
+                                field,
+                                Minus(Duration::from_secs(60 * 60 * 24)),
+                            ));
+                        }
+                        if ui.button("+24h").clicked() {
+                            log_err!(update_time(
+                                jwt_claims,
+                                field,
+                                Plus(Duration::from_secs(60 * 60 * 24)),
+                            ));
+                        }
+                        if ui.button("+7d").clicked() {
+                            log_err!(update_time(
+                                jwt_claims,
+                                field,
+                                Plus(Duration::from_secs(60 * 60 * 24 * 7)),
+                            ));
+                        }
+                        if ui.button("+365d").clicked() {
+                            log_err!(update_time(
+                                jwt_claims,
+                                field,
+                                Plus(Duration::from_secs(60 * 60 * 24 * 365)),
+                            ));
                         }
                     });
                     ui.horizontal(|ui| {

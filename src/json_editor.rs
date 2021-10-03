@@ -1,4 +1,11 @@
 use std::fmt::{self, Display};
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+#[derive(Clone, Copy, PartialEq)]
+pub enum TimeOffset {
+    Plus(Duration),
+    Minus(Duration),
+}
 
 #[derive(Clone, Copy)]
 pub enum FieldType<'a> {
@@ -138,6 +145,28 @@ where
     } else {
         Err("JSON fragment matching the field does not appear to be valid")
     }
+}
+
+pub fn update_time(
+    json: &mut String,
+    field: &str,
+    offset: TimeOffset,
+) -> Result<(), &'static str> {
+    use TimeOffset::*;
+
+    let now_plus_24h = SystemTime::now();
+    let now_plus_24h = match offset {
+        Plus(offset) => now_plus_24h.checked_add(offset),
+        Minus(offset) => now_plus_24h.checked_sub(offset),
+    };
+    let now_plus_24h = now_plus_24h
+        .expect("Time calculation error")
+        .duration_since(UNIX_EPOCH)
+        .expect("Negative time somehow")
+        .as_secs();
+
+    // Try to replace the given field with the calculated value
+    replace_field(json, field, now_plus_24h)
 }
 
 #[cfg(test)]
