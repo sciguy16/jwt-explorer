@@ -3,6 +3,7 @@
 
 use eframe::{egui, epi};
 use serde::Deserialize;
+use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use strum::IntoEnumIterator;
 #[macro_use]
 extern crate log;
@@ -10,10 +11,12 @@ extern crate log;
 mod attack;
 mod decoder;
 mod encoder;
+mod json_editor;
 mod json_formatter;
 mod signature;
 
 use attack::Attack;
+use json_editor::replace_field;
 use signature::SignatureTypes;
 
 #[derive(Deserialize)]
@@ -90,6 +93,26 @@ impl epi::App for AppState {
                     ui.horizontal(|ui| {
                         if ui.button("Expiry now+24h").clicked() {
                             info!("Set expiry to the future");
+
+                            let now_plus_24h = SystemTime::now()
+                                .checked_add(Duration::from_secs(60 * 60 * 24))
+                                .expect("Time calculation error")
+                                .duration_since(UNIX_EPOCH)
+                                .expect("Negative time somehow")
+                                .as_secs();
+
+                            info!("now plus 24h is {}", now_plus_24h);
+
+                            // Try to replace the exp field with the
+                            // calculated value
+                            if let Err(e) =
+                                replace_field(jwt_claims, "exp", now_plus_24h)
+                            {
+                                warn!("{}", e);
+                            }
+                            //self.jwt_claims = EXP_REGEX
+                            //  .replace(&self.jwt_claims, now_plus_24h)
+                            //.to_string();
                         }
                     });
                     ui.horizontal(|ui| {
