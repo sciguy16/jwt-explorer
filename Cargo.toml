@@ -8,7 +8,7 @@ edition = "2018"
 [dependencies]
 base64 = "0.13"
 crypto-hashes = { version = "0.9", features = ["include_weak"] }
-eframe = "0.14"
+#eframe = "0.14"
 hmac = "0.11"
 lazy_static = "1.4"
 log = "0.4"
@@ -17,3 +17,7 @@ serde_json = "1.0"
 simplelog = { version = "0.10", features = ["test"] }
 strum = { version = "0.21", features = ["derive"] }
 strum_macros = "0.21"
+
+[dependencies.eframe]
+git = "https://github.com/emilk/egui"
+rev = "f0868c2"

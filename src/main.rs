@@ -1,7 +1,8 @@
 // On Windows platform, don't show a console when opening the app.
 #![windows_subsystem = "windows"]
 
-use eframe::{egui, epi};
+use eframe::egui::{self, Pos2, ScrollArea, TextStyle};
+use eframe::epi;
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use simplelog::{
@@ -38,6 +39,12 @@ macro_rules! log_err {
 struct Log {
     buffer: Vec<u8>,
     inner: Arc<RwLock<Vec<String>>>,
+}
+
+impl Log {
+    pub fn len(&self) -> usize {
+        self.inner.read().unwrap().len()
+    }
 }
 
 impl Write for Log {
@@ -82,6 +89,7 @@ struct AppState {
     secret: String,
     signature_type: SignatureTypes,
     attacks: Vec<Attack>,
+    win_size: Pos2,
 }
 
 impl epi::App for AppState {
@@ -99,6 +107,7 @@ impl epi::App for AppState {
             secret,
             signature_type,
             attacks,
+            win_size,
         } = self;
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -121,128 +130,170 @@ impl epi::App for AppState {
                     ui.text_edit_multiline(jwt_claims);
                 });
                 ui.vertical(|ui| {
-                    ui.horizontal(|ui| {
-                        ui.label("Secret: ");
-                        ui.text_edit_singleline(secret);
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Attacks: ");
-                        if ui.button("Alg:none").clicked() {
-                            info!("Generating Alg:None attacks");
-                            let generated_attacks =
-                                attack::alg_none(jwt_claims);
-                            for attack in generated_attacks {
-                                attacks.push(attack);
-                            }
-                        }
-                    });
-                    ui.horizontal(|ui| {
-                        use TimeOffset::*;
-                        let field = "iat";
-                        ui.label("iat:");
-                        if ui.button("-24h").clicked() {
-                            log_err!(update_time(
-                                jwt_claims,
-                                field,
-                                Minus(Duration::from_secs(60 * 60 * 24)),
-                            ));
-                        }
-                        if ui.button("+24h").clicked() {
-                            log_err!(update_time(
-                                jwt_claims,
-                                field,
-                                Plus(Duration::from_secs(60 * 60 * 24)),
-                            ));
-                        }
-                        if ui.button("+7d").clicked() {
-                            log_err!(update_time(
-                                jwt_claims,
-                                field,
-                                Plus(Duration::from_secs(60 * 60 * 24 * 7)),
-                            ));
-                        }
-                        if ui.button("+365d").clicked() {
-                            log_err!(update_time(
-                                jwt_claims,
-                                field,
-                                Plus(Duration::from_secs(60 * 60 * 24 * 365)),
-                            ));
-                        }
-                    });
-                    ui.horizontal(|ui| {
-                        use TimeOffset::*;
-                        let field = "exp";
-                        ui.label("exp:");
-                        if ui.button("-24h").clicked() {
-                            log_err!(update_time(
-                                jwt_claims,
-                                field,
-                                Minus(Duration::from_secs(60 * 60 * 24)),
-                            ));
-                        }
-                        if ui.button("+24h").clicked() {
-                            log_err!(update_time(
-                                jwt_claims,
-                                field,
-                                Plus(Duration::from_secs(60 * 60 * 24)),
-                            ));
-                        }
-                        if ui.button("+7d").clicked() {
-                            log_err!(update_time(
-                                jwt_claims,
-                                field,
-                                Plus(Duration::from_secs(60 * 60 * 24 * 7)),
-                            ));
-                        }
-                        if ui.button("+365d").clicked() {
-                            log_err!(update_time(
-                                jwt_claims,
-                                field,
-                                Plus(Duration::from_secs(60 * 60 * 24 * 365)),
-                            ));
-                        }
-                    });
-                    ui.horizontal(|ui| {
-                        ui.label("Signature type: ");
-                        egui::ComboBox::from_label("")
-                            .selected_text(format!("{}", signature_type))
-                            .show_ui(ui, |ui| {
-                                for sig in SignatureTypes::iter() {
-                                    ui.selectable_value(
-                                        signature_type,
-                                        sig,
-                                        format!("{}", sig),
-                                    );
+                    ui.group(|ui| {
+                        // Controls
+                        ui.horizontal(|ui| {
+                            ui.label("Secret: ");
+                            ui.text_edit_singleline(secret);
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Attacks: ");
+                            if ui.button("Alg:none").clicked() {
+                                info!("Generating Alg:None attacks");
+                                let generated_attacks =
+                                    attack::alg_none(jwt_claims);
+                                for attack in generated_attacks {
+                                    attacks.push(attack);
                                 }
-                            });
-                    });
-                    if ui.button("Encode and sign").clicked() {
-                        info!("Encode and sign JWT");
-                        match encoder::encode_and_sign(
-                            jwt_header,
-                            jwt_claims,
-                            secret,
-                            *signature_type,
-                        ) {
-                            Ok(token) => {
-                                info!("Encode & sign successful");
-                                attacks.push(Attack {
-                                    name: secret.clone(),
-                                    token,
-                                });
                             }
-                            Err(e) => {
-                                warn!("Error signing token: {}", e);
+                        });
+                        ui.horizontal(|ui| {
+                            use TimeOffset::*;
+                            let field = "iat";
+                            ui.label("iat:");
+                            if ui.button("-24h").clicked() {
+                                log_err!(update_time(
+                                    jwt_claims,
+                                    field,
+                                    Minus(Duration::from_secs(60 * 60 * 24)),
+                                ));
+                            }
+                            if ui.button("+24h").clicked() {
+                                log_err!(update_time(
+                                    jwt_claims,
+                                    field,
+                                    Plus(Duration::from_secs(60 * 60 * 24)),
+                                ));
+                            }
+                            if ui.button("+7d").clicked() {
+                                log_err!(update_time(
+                                    jwt_claims,
+                                    field,
+                                    Plus(Duration::from_secs(60 * 60 * 24 * 7)),
+                                ));
+                            }
+                            if ui.button("+365d").clicked() {
+                                log_err!(update_time(
+                                    jwt_claims,
+                                    field,
+                                    Plus(Duration::from_secs(
+                                        60 * 60 * 24 * 365
+                                    )),
+                                ));
+                            }
+                        });
+                        ui.horizontal(|ui| {
+                            use TimeOffset::*;
+                            let field = "exp";
+                            ui.label("exp:");
+                            if ui.button("-24h").clicked() {
+                                log_err!(update_time(
+                                    jwt_claims,
+                                    field,
+                                    Minus(Duration::from_secs(60 * 60 * 24)),
+                                ));
+                            }
+                            if ui.button("+24h").clicked() {
+                                log_err!(update_time(
+                                    jwt_claims,
+                                    field,
+                                    Plus(Duration::from_secs(60 * 60 * 24)),
+                                ));
+                            }
+                            if ui.button("+7d").clicked() {
+                                log_err!(update_time(
+                                    jwt_claims,
+                                    field,
+                                    Plus(Duration::from_secs(60 * 60 * 24 * 7)),
+                                ));
+                            }
+                            if ui.button("+365d").clicked() {
+                                log_err!(update_time(
+                                    jwt_claims,
+                                    field,
+                                    Plus(Duration::from_secs(
+                                        60 * 60 * 24 * 365
+                                    )),
+                                ));
+                            }
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Signature type: ");
+                            egui::ComboBox::from_label("")
+                                .selected_text(format!("{}", signature_type))
+                                .show_ui(ui, |ui| {
+                                    for sig in SignatureTypes::iter() {
+                                        ui.selectable_value(
+                                            signature_type,
+                                            sig,
+                                            format!("{}", sig),
+                                        );
+                                    }
+                                });
+                        });
+                        if ui.button("Encode and sign").clicked() {
+                            info!("Encode and sign JWT");
+                            match encoder::encode_and_sign(
+                                jwt_header,
+                                jwt_claims,
+                                secret,
+                                *signature_type,
+                            ) {
+                                Ok(token) => {
+                                    info!("Encode & sign successful");
+                                    attacks.push(Attack {
+                                        name: secret.clone(),
+                                        token,
+                                    });
+                                }
+                                Err(e) => {
+                                    warn!("Error signing token: {}", e);
+                                }
                             }
                         }
-                    }
-                });
+                    });
+                }); // controls
             });
 
+            let half_width = ui.available_width() / 2.0;
+            let half_height = win_size.y / 2.0;
+
             ui.horizontal(|ui| {
-                ui.vertical(|ui| {
+
+                ui.vertical(|ui| {ui.group(|ui|{
+                        ui.set_max_width(half_width);
+                        ui.set_min_height(half_height);
                     ui.label("Generated attack payloads:");
 
+                    ui.add_space(4.0);
+
+                    let row_height = ui.spacing().interact_size.y;
+                    let num_rows = attacks.len();
+
+                    ScrollArea::vertical().id_source("attacks").show_rows(
+                        ui,
+                        row_height,
+                        num_rows,
+                        |ui, row_range| {
+                            for atk in
+                                    attacks.get_mut(row_range)
+                                    .unwrap_or_default()
+                            {
+                                ui.horizontal(|ui| {if ui.button("Copy").clicked() {
+                                        println!(
+                                            "Copy this text: {}",
+                                            atk.token
+                                        );
+                                    }
+                                    ui.label(format!("{}: ", atk.name));
+                                        ui.add_sized(ui.available_size(),
+                                            egui::TextEdit::singleline(&mut atk.token));
+                                    
+                                });
+                            }
+                        },
+                    );
+/*
                     for atk in attacks {
                         ui.horizontal(|ui| {
                             ui.label(format!("{}: ", atk.name));
@@ -251,27 +302,49 @@ impl epi::App for AppState {
                                 println!("Copy this text: {}", atk.token);
                             }
                         });
-                    }
-                });
-                ui.vertical(|ui| {
-                    ui.label("Log");
-                    for item in LOG.inner.read().unwrap().iter().rev() {
-                        ui.label(item);
-                    }
+                    }*/
                 });
             });
+                ui.vertical(|ui| {
+                    ui.group(|ui|{
+                        //ui.set_max_width(half_width);
+                        ui.set_min_height(half_height);
+                    ui.label("Log");
+                    ui.add_space(4.0);
+
+                    let text_style = TextStyle::Body;
+                    let row_height = ui.fonts()[text_style].row_height();
+                    let num_rows = LOG.len();
+
+                    ScrollArea::vertical().id_source("logs").show_rows(
+                        ui,
+                        row_height,
+                        num_rows,
+                        |ui, row_range| {
+                            for row in LOG
+                                .inner
+                                .read()
+                                .unwrap()
+                                .get(row_range)
+                                .unwrap_or_default()
+                            {
+                                ui.label(row);
+                            }
+                        },
+                    );
+                });});
+            })/*the bottom horizontal()*/;
         });
 
         // Resize the native window to be just the size we need it to be:
-        frame.set_window_size(ctx.used_size());
+        // frame.set_window_size(ctx.used_size());
+
+        *win_size = ctx.available_rect().max;
     }
 }
 
 pub fn main() {
     use simplelog::ConfigBuilder;
-
-    let mut log_writer = LOG.clone();
-    log_writer.write_all(b"hi").unwrap();
 
     let write_logger_config = ConfigBuilder::new().build();
 
@@ -282,7 +355,7 @@ pub fn main() {
             TerminalMode::Mixed,
             ColorChoice::Auto,
         ),
-        WriteLogger::new(LevelFilter::Info, write_logger_config, log_writer),
+        WriteLogger::new(LevelFilter::Info, write_logger_config, LOG.clone()),
     ]);
 
     let options = eframe::NativeOptions::default();
