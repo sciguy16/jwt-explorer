@@ -37,7 +37,7 @@ mod test {
         let tokens = alg_none(claims);
         let expected = &[
             Attack {
-                name: "none".to_string(),
+                name: "alg:none".to_string(),
                 token: concat!(
                     "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0",
                     ".",
@@ -46,7 +46,7 @@ mod test {
                 .to_string(),
             },
             Attack {
-                name: "None".to_string(),
+                name: "alg:None".to_string(),
                 token: concat!(
                     "eyJhbGciOiJOb25lIiwidHlwIjoiSldUIn0",
                     ".",
@@ -55,7 +55,7 @@ mod test {
                 .to_string(),
             },
             Attack {
-                name: "nOnE".to_string(),
+                name: "alg:nOnE".to_string(),
                 token: concat!(
                     "eyJhbGciOiJuT25FIiwidHlwIjoiSldUIn0",
                     ".",
@@ -64,7 +64,7 @@ mod test {
                 .to_string(),
             },
             Attack {
-                name: "NONE".to_string(),
+                name: "alg:NONE".to_string(),
                 token: concat!(
                     "eyJhbGciOiJOT05FIiwidHlwIjoiSldUIn0",
                     ".",
