@@ -2,7 +2,14 @@
 #![windows_subsystem = "windows"]
 
 use eframe::{egui, epi};
+use lazy_static::lazy_static;
 use serde::Deserialize;
+use simplelog::{
+    ColorChoice, CombinedLogger, LevelFilter, TermLogger, TerminalMode,
+    WriteLogger,
+};
+use std::fmt::{self, Write};
+use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use strum::IntoEnumIterator;
 #[macro_use]
@@ -25,6 +32,22 @@ macro_rules! log_err {
             warn!("{}", e);
         }
     };
+}
+
+#[derive(Default)]
+struct Log {
+    inner: Arc<RwLock<Vec<String>>>,
+}
+
+impl Write for Log {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        LOG.inner.write().unwrap().push(s.to_string());
+        Ok(())
+    }
+}
+
+lazy_static! {
+    static ref LOG: Log = Default::default();
 }
 
 #[derive(Deserialize)]
@@ -78,7 +101,6 @@ impl epi::App for AppState {
             });
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
-                    ui.text_edit_multiline(jwt_status);
                     ui.text_edit_multiline(jwt_header);
                     ui.text_edit_multiline(jwt_claims);
                 });
@@ -198,6 +220,10 @@ impl epi::App for AppState {
                             }
                         }
                     }
+                    ui.label("Log");
+                    for item in LOG.inner.read().unwrap().iter() {
+                        ui.label(item);
+                    }
                 });
             });
 
@@ -220,10 +246,17 @@ impl epi::App for AppState {
 }
 
 pub fn main() {
-    env_logger::Builder::from_env(
-        env_logger::Env::default().default_filter_or("info"),
-    )
-    .init();
+    // env_logger::Builder::from_env(
+    //    env_logger::Env::default().default_filter_or("info"),
+    // )
+    //.init();
+
+    let _ = CombinedLogger::init(vec![TermLogger::new(
+        LevelFilter::Info,
+        Default::default(),
+        TerminalMode::Mixed,
+        ColorChoice::Auto,
+    )]);
 
     let options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(AppState::default()), options);
@@ -232,6 +265,7 @@ pub fn main() {
 #[cfg(test)]
 mod test {
     use super::*;
+    use simplelog::TestLogger;
 
     const JWT_HS384: &str = "\
         eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.\
@@ -252,10 +286,7 @@ mod test {
 }"#,
     );
     pub fn init() {
-        let _ = env_logger::builder()
-            .is_test(true)
-            .filter(None, log::LevelFilter::Debug)
-            .try_init();
+        let _ = TestLogger::init(LevelFilter::Debug, Default::default());
     }
 
     #[test]
