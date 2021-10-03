@@ -8,7 +8,7 @@ use simplelog::{
     ColorChoice, CombinedLogger, LevelFilter, TermLogger, TerminalMode,
     WriteLogger,
 };
-use std::fmt::{self, Write};
+use std::io::{self, Write};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
 use strum::IntoEnumIterator;
@@ -34,14 +34,30 @@ macro_rules! log_err {
     };
 }
 
-#[derive(Default)]
+#[derive(Clone, Default)]
 struct Log {
+    buffer: Vec<u8>,
     inner: Arc<RwLock<Vec<String>>>,
 }
 
 impl Write for Log {
-    fn write_str(&mut self, s: &str) -> fmt::Result {
-        LOG.inner.write().unwrap().push(s.to_string());
+    fn write(&mut self, bytes: &[u8]) -> io::Result<usize> {
+        for b in bytes {
+            match b {
+                b'\n' => self.flush()?,
+                b => self.buffer.push(*b),
+            }
+        }
+        Ok(bytes.len())
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        if !self.buffer.is_empty() || self.buffer.ends_with(&[b'\n']) {
+            let s =
+                std::mem::replace(&mut self.buffer, Vec::with_capacity(200));
+            let s = String::from_utf8_lossy(&s).to_string();
+            self.inner.write().unwrap().push(s);
+        }
         Ok(())
     }
 }
@@ -220,24 +236,30 @@ impl epi::App for AppState {
                             }
                         }
                     }
+                });
+            });
+
+            ui.horizontal(|ui| {
+                ui.vertical(|ui| {
+                    ui.label("Generated attack payloads:");
+
+                    for atk in attacks {
+                        ui.horizontal(|ui| {
+                            ui.label(format!("{}: ", atk.name));
+                            ui.text_edit_singleline(&mut atk.token);
+                            if ui.button("Copy").clicked() {
+                                println!("Copy this text: {}", atk.token);
+                            }
+                        });
+                    }
+                });
+                ui.vertical(|ui| {
                     ui.label("Log");
-                    for item in LOG.inner.read().unwrap().iter() {
+                    for item in LOG.inner.read().unwrap().iter().rev() {
                         ui.label(item);
                     }
                 });
             });
-
-            ui.label("Generated attack payloads:");
-
-            for atk in attacks {
-                ui.horizontal(|ui| {
-                    ui.label(format!("{}: ", atk.name));
-                    ui.text_edit_singleline(&mut atk.token);
-                    if ui.button("Copy").clicked() {
-                        println!("Copy this text: {}", atk.token);
-                    }
-                });
-            }
         });
 
         // Resize the native window to be just the size we need it to be:
@@ -246,17 +268,22 @@ impl epi::App for AppState {
 }
 
 pub fn main() {
-    // env_logger::Builder::from_env(
-    //    env_logger::Env::default().default_filter_or("info"),
-    // )
-    //.init();
+    use simplelog::ConfigBuilder;
 
-    let _ = CombinedLogger::init(vec![TermLogger::new(
-        LevelFilter::Info,
-        Default::default(),
-        TerminalMode::Mixed,
-        ColorChoice::Auto,
-    )]);
+    let mut log_writer = LOG.clone();
+    log_writer.write_all(b"hi").unwrap();
+
+    let write_logger_config = ConfigBuilder::new().build();
+
+    let _ = CombinedLogger::init(vec![
+        TermLogger::new(
+            LevelFilter::Info,
+            Default::default(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        ),
+        WriteLogger::new(LevelFilter::Info, write_logger_config, log_writer),
+    ]);
 
     let options = eframe::NativeOptions::default();
     eframe::run_native(Box::new(AppState::default()), options);
