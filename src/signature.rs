@@ -10,6 +10,7 @@ use crate::JwtHeader;
 #[derive(Copy, Clone, EnumIter, Eq, PartialEq, Ord, PartialOrd, Debug)]
 pub enum SignatureTypes {
     Auto,
+    None,
     Hs256,
     Hs384,
     Hs512,
@@ -86,6 +87,7 @@ pub fn calc_signature(
 
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
         }
+        None => Ok("".to_string()),
         _ => Err(format!("Unrecognised signature type: {}", hash_type)),
     }
 }

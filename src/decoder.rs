@@ -129,7 +129,7 @@ mod test {
         let decoded = decode_jwt(inp, "");
         assert_eq!(decoded.header, header);
         assert_eq!(decoded.claims, claims);
-        assert!(!decoded.signature_valid);
+        assert!(decoded.signature_valid);
     }
 
     #[test]
@@ -147,5 +147,22 @@ mod test {
         assert_eq!(decoded.header, header);
         assert_eq!(decoded.claims, claims);
         assert!(decoded.signature_valid);
+    }
+
+    #[test]
+    fn decode_jwt_with_invalid_signature() {
+        init();
+        let inp = concat!(
+            "eyJhbGciOiJIUzM4NCIsInR5cGUiOiJKV1QifQ.",
+            "eyJoZWxsbyI6IndvcmxkIn0.",
+            "THIS DOES NOT LOOK LIKE A VALID SIGNATURE",
+        );
+        let header = "{\n  \"alg\": \"HS384\",\n  \"type\": \"JWT\"\n}";
+        let claims = "{\n  \"hello\": \"world\"\n}";
+
+        let decoded = decode_jwt(inp, "password");
+        assert_eq!(decoded.header, header);
+        assert_eq!(decoded.claims, claims);
+        assert!(!decoded.signature_valid);
     }
 }
