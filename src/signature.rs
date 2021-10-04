@@ -66,8 +66,6 @@ pub fn calc_signature(
             let result = mac.finalize();
             let signature_bytes = result.into_bytes();
 
-            println!("bytes: {:?}", &signature_bytes);
-
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
         }
         Hs384 => {

@@ -9,82 +9,74 @@ use base64::URL_SAFE_NO_PAD;
 pub struct Jwt {
     pub header: String,
     pub claims: String,
-    pub status: Vec<String>,
+    pub signature_valid: bool,
 }
 
 pub(crate) fn decode_jwt(inp: &str, secret: &str) -> Jwt {
     let mut jwt = Jwt::default();
     if inp.is_empty() {
-        jwt.status.push("Empty input".to_string());
+        warn!("{}", "Empty input");
         return jwt;
     }
 
-    // Try decoding it "properly"
-    //let claims: BTreeMap<String, String> = inp.verify_with_key(&key).unwrap();
-
     // If proper decoding fails then decode the base64 chunks separately
     let mut parts = inp.split('.');
-    let header = parts.next();
-    let claims = parts.next();
-    let signature = parts.next();
+    let header = parts.next().unwrap_or_default();
+    let claims = parts.next().unwrap_or_default();
+    let signature = parts.next().unwrap_or_default();
+    let signing_payload = format!("{}.{}", header, claims);
 
     // Verify signature if present
-    if let Some(signature) = signature {
+    if let Ok(header) = decode_base64(header) {
         // verify it
-        if let Ok(header_decoded) = serde_json::from_str::<JwtHeader>(signature)
-        {
-            if let Some(sig_type) = SignatureTypes::from_header(&header_decoded)
-            {
-                // Header decoded successfully
-                if let Ok(signature_to_compare) = signature::calc_signature(
-                    &format!(
-                        "{}.{}",
-                        header.unwrap_or_default(),
-                        claims.unwrap_or_default()
-                    ),
-                    secret,
-                    sig_type,
-                ) {
-                    if signature_to_compare == signature {
-                        info!("Valid signature!");
-                        jwt.status.push("Signature valid".to_string());
-                    } else {
-                        info!("Signature verification failed");
-                        jwt.status
-                            .push("Signature verification failed".to_string());
+        debug!("header: {}", header);
+        match serde_json::from_str::<JwtHeader>(&header) {
+            Ok(header_decoded) => {
+                if let Some(sig_type) =
+                    SignatureTypes::from_header(&header_decoded)
+                {
+                    // Header decoded successfully
+                    if let Ok(signature_to_compare) = signature::calc_signature(
+                        &signing_payload,
+                        secret,
+                        sig_type,
+                    ) {
+                        if signature_to_compare == signature {
+                            jwt.signature_valid = true;
+                            info!("Valid signature!");
+                        } else {
+                            jwt.signature_valid = false;
+                            info!("Signature verification failed");
+                            debug!(
+                                "Signature mismatch:\ncalc: {}\norig: {}",
+                                signature_to_compare, signature
+                            );
+                        }
                     }
                 }
             }
-        } else {
-            jwt.status.push("Invalid header".to_string());
+            Err(e) => {
+                info!("Invalid header: {}", e);
+            }
         }
     } else {
-        jwt.status.push("No signature present".to_string());
+        info!("No signature present");
     }
 
-    match (header, claims) {
-        (Some(header), Some(claims)) => {
-            // decode them
-            info!("Decoding header: {}", header);
-            match decode_base64(header) {
-                Ok(h) => jwt.header = format_json_string(&h),
-                Err(e) => jwt.status.push(e),
-            }
-            info!("Decoded: {:?}", jwt.header);
-
-            info!("Decoding claims: {}", claims);
-            match decode_base64(claims) {
-                Ok(c) => jwt.claims = format_json_string(&c),
-                Err(e) => jwt.status.push(e),
-            }
-            info!("Decoded: {:?}", claims);
-        }
-        (None, None) => jwt
-            .status
-            .push("Missing header and claims sections".to_string()),
-        (None, _) => jwt.status.push("Missing header section".to_string()),
-        (_, None) => jwt.status.push("Missing claims section".to_string()),
+    // decode them
+    debug!("Decoding header: {}", header);
+    match decode_base64(header) {
+        Ok(h) => jwt.header = format_json_string(&h),
+        Err(e) => warn!("{}", e),
     }
+    debug!("Decoded: {:?}", jwt.header);
+
+    debug!("Decoding claims: {}", claims);
+    match decode_base64(claims) {
+        Ok(c) => jwt.claims = format_json_string(&c),
+        Err(e) => warn!("{}", e),
+    }
+    debug!("Decoded: {:?}", jwt.claims);
 
     jwt
 }
@@ -137,10 +129,11 @@ mod test {
         let decoded = decode_jwt(inp, "");
         assert_eq!(decoded.header, header);
         assert_eq!(decoded.claims, claims);
+        assert!(!decoded.signature_valid);
     }
 
     #[test]
-    fn decide_jwt_with_signature() {
+    fn decode_jwt_with_signature() {
         init();
         let inp = concat!(
             "eyJhbGciOiJIUzM4NCIsInR5cGUiOiJKV1QifQ.",
@@ -153,5 +146,6 @@ mod test {
         let decoded = decode_jwt(inp, "password");
         assert_eq!(decoded.header, header);
         assert_eq!(decoded.claims, claims);
+        assert!(decoded.signature_valid);
     }
 }

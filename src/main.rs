@@ -78,7 +78,7 @@ lazy_static! {
 pub struct JwtHeader {
     alg: String,
     #[allow(dead_code)]
-    typ: String,
+    typ: Option<String>,
 }
 
 #[derive(Clone, Default)]
@@ -86,7 +86,6 @@ struct AppState {
     jwt_input: String,
     jwt_header: String,
     jwt_claims: String,
-    jwt_status: String,
     secret: String,
     signature_type: SignatureTypes,
     attacks: Vec<Attack>,
@@ -134,7 +133,6 @@ impl epi::App for AppState {
             jwt_input,
             jwt_header,
             jwt_claims,
-            jwt_status,
             secret,
             signature_type,
             attacks,
@@ -152,7 +150,6 @@ impl epi::App for AppState {
                     let decoded = decoder::decode_jwt(jwt_input, secret);
                     *jwt_header = decoded.header;
                     *jwt_claims = decoded.claims;
-                    *jwt_status = decoded.status.join("\n");
                 }
                 if ui.button("Demo").clicked() {
                     *jwt_input = concat!(
@@ -199,7 +196,7 @@ impl epi::App for AppState {
                         ui.horizontal(|ui| {
                             ui.label("Attacks: ");
                             if ui.button("Alg:none").clicked() {
-                                info!("Generating Alg:None attacks");
+                                debug!("Generating Alg:None attacks");
                                 let generated_attacks =
                                     attack::alg_none(jwt_claims);
                                 for attack in generated_attacks {
@@ -292,7 +289,7 @@ impl epi::App for AppState {
                                 });
                         });
                         if ui.button("Encode and sign").clicked() {
-                            info!("Encode and sign JWT");
+                            debug!("Encode and sign JWT");
                             match encoder::encode_and_sign(
                                 jwt_header,
                                 jwt_claims,
@@ -300,7 +297,7 @@ impl epi::App for AppState {
                                 *signature_type,
                             ) {
                                 Ok(token) => {
-                                    info!("Encode & sign successful");
+                                    debug!("Encode & sign successful");
                                     attacks.push(Attack {
                                         name: secret.clone(),
                                         token,
