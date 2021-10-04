@@ -25,7 +25,7 @@ mod json_formatter;
 mod signature;
 
 use attack::Attack;
-use json_editor::{update_time, TimeOffset};
+use json_editor::{update_alg, update_time, TimeOffset};
 use signature::SignatureTypes;
 
 macro_rules! log_err {
@@ -287,6 +287,12 @@ impl epi::App for AppState {
                                         );
                                     }
                                 });
+                            if ui.button("Update header").clicked() {
+                                log_err!(update_alg(
+                                    jwt_header,
+                                    *signature_type
+                                ));
+                            }
                         });
                         if ui.button("Encode and sign").clicked() {
                             debug!("Encode and sign JWT");

@@ -1,6 +1,8 @@
 use std::fmt::{self, Display};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
+use crate::signature::SignatureTypes;
+
 #[derive(Clone, Copy, PartialEq)]
 pub enum TimeOffset {
     Plus(Duration),
@@ -169,9 +171,19 @@ pub fn update_time(
     replace_field(json, field, now_plus_24h)
 }
 
+pub fn update_alg(
+    json: &mut String,
+    replacement: SignatureTypes,
+) -> Result<(), &'static str> {
+    if replacement != SignatureTypes::Auto {
+        replace_field(json, "alg", replacement.to_string().as_str())
+    } else {
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod test {
-
     use super::*;
     use crate::test::init;
 
@@ -307,8 +319,6 @@ mod test {
     fn replace_string_with_invalid_escape_sequence() {
         init();
 
-        init();
-
         let mut json = r#"
     		{
     			"hello": "w\orld",
@@ -321,5 +331,49 @@ mod test {
         let res = replace_field(&mut json, "hello", "potato");
         assert_eq!(json, expected);
         assert!(res.is_err());
+    }
+
+    #[test]
+    fn test_update_alg() {
+        init();
+
+        let mut json = r#"
+            {
+                "alg": "HS384",
+                "typ": "JWT"
+            }
+        "#
+        .to_string();
+        let expected = r#"
+            {
+                "alg": "HS256",
+                "typ": "JWT"
+            }
+        "#;
+
+        update_alg(&mut json, SignatureTypes::Hs256).unwrap();
+        assert_eq!(json, expected);
+    }
+
+    #[test]
+    fn test_update_alg_auto() {
+        init();
+
+        let mut json = r#"
+            {
+                "alg": "HS384",
+                "typ": "JWT"
+            }
+        "#
+        .to_string();
+        let expected = r#"
+            {
+                "alg": "HS384",
+                "typ": "JWT"
+            }
+        "#;
+
+        update_alg(&mut json, SignatureTypes::Auto).unwrap();
+        assert_eq!(json, expected);
     }
 }
