@@ -1,6 +1,7 @@
 // On Windows platform, don't show a console when opening the app.
 #![windows_subsystem = "windows"]
 
+use copypasta::{ClipboardContext, ClipboardProvider};
 use eframe::egui::{self, Pos2, ScrollArea, TextStyle};
 use eframe::epi;
 use lazy_static::lazy_static;
@@ -90,6 +91,37 @@ struct AppState {
     signature_type: SignatureTypes,
     attacks: Vec<Attack>,
     win_size: Pos2,
+    clipboard: Clipboard,
+}
+
+#[derive(Clone, Default)]
+struct Clipboard(Option<Arc<RwLock<ClipboardContext>>>);
+
+impl Clipboard {
+    #[inline]
+    fn init(&mut self) {
+        if self.0.is_none() {
+            match ClipboardContext::new() {
+                Ok(cc) => {
+                    self.0 = Some(Arc::new(RwLock::new(cc)));
+                }
+                Err(e) => {
+                    error!("Clipboard error: {}", e);
+                }
+            }
+        }
+    }
+
+    pub fn put(&mut self, content: &str) {
+        self.init();
+        if let Some(cc) = &self.0 {
+            if let Err(e) =
+                cc.write().unwrap().set_contents(content.to_string())
+            {
+                error!("Clipboard error: {}", e);
+            }
+        }
+    }
 }
 
 impl epi::App for AppState {
@@ -107,6 +139,7 @@ impl epi::App for AppState {
             signature_type,
             attacks,
             win_size,
+            clipboard,
         } = self;
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -291,10 +324,7 @@ impl epi::App for AppState {
                             {
                                 ui.horizontal(|ui| {
                                     if ui.button("Copy").clicked() {
-                                        println!(
-                                            "Copy this text: {}",
-                                            atk.token
-                                        );
+                                        clipboard.put(&atk.token);
                                     }
                                     ui.label(format!("{}: ", atk.name));
                                         ui.add_sized(

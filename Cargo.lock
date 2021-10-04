@@ -880,6 +880,7 @@ name = "jwt-explorer"
 version = "0.1.0"
 dependencies = [
  "base64",
+ "copypasta",
  "crypto-hashes",
  "eframe",
  "hmac",

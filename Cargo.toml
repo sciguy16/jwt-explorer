@@ -7,6 +7,7 @@ edition = "2018"
 
 [dependencies]
 base64 = "0.13"
+copypasta = "0.7"
 crypto-hashes = { version = "0.9", features = ["include_weak"] }
 #eframe = "0.14"
 hmac = "0.11"
