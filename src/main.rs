@@ -2,14 +2,18 @@
 #![windows_subsystem = "windows"]
 
 use copypasta::{ClipboardContext, ClipboardProvider};
-use eframe::egui::{self, Pos2, ScrollArea, TextEdit, TextStyle};
-use eframe::epi;
+use eframe::egui::{
+    self, CtxRef, FontDefinitions, FontFamily, Pos2, ScrollArea, TextEdit,
+    TextStyle,
+};
+use eframe::epi::{self, Frame, Storage};
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use simplelog::{
     ColorChoice, CombinedLogger, LevelFilter, TermLogger, TerminalMode,
     WriteLogger,
 };
+use std::borrow::Cow;
 use std::io::{self, Write};
 use std::sync::{Arc, RwLock};
 use std::time::Duration;
@@ -128,6 +132,43 @@ impl epi::App for AppState {
         "JWT Explorer"
     }
 
+    fn setup(
+        &mut self,
+        ctx: &CtxRef,
+        _frame: &mut Frame<'_>,
+        _storage: Option<&dyn Storage>,
+    ) {
+        let mut fonts = FontDefinitions::default();
+
+        fonts.font_data.insert(
+            "Liberation Mono".to_string(),
+            Cow::Borrowed(include_bytes!(concat!(
+                "../fonts/liberation-mono/",
+                "LiberationMono-Regular.ttf"
+            ))),
+        );
+        fonts
+            .fonts_for_family
+            .get_mut(&FontFamily::Monospace)
+            .unwrap()
+            .insert(0, "Liberation Mono".to_string());
+
+        fonts.font_data.insert(
+            "Liberation Serif".to_string(),
+            Cow::Borrowed(include_bytes!(concat!(
+                "../fonts/liberation-serif/",
+                "LiberationSerif-Regular.ttf"
+            ))),
+        );
+        fonts
+            .fonts_for_family
+            .get_mut(&FontFamily::Proportional)
+            .unwrap()
+            .insert(0, "Liberation Serif".to_string());
+
+        ctx.set_fonts(fonts);
+    }
+
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         let Self {
             jwt_input,
@@ -145,7 +186,10 @@ impl epi::App for AppState {
             ui.label("Hint: pop the JWT into Hashcat to check for weak keys");
             ui.horizontal(|ui| {
                 ui.label("JWT: ");
-                ui.text_edit_singleline(jwt_input);
+                ui.add(
+                    TextEdit::singleline(jwt_input)
+                        .text_style(TextStyle::Monospace),
+                );
                 if ui.button("Decode").clicked() {
                     let decoded = decoder::decode_jwt(jwt_input, secret);
                     *jwt_header = decoded.header;
@@ -185,7 +229,10 @@ impl epi::App for AppState {
                         ScrollArea::vertical().id_source("jwt_header").show(
                             ui,
                             |ui| {
-                                ui.text_edit_multiline(jwt_header);
+                                ui.add(
+                                    TextEdit::multiline(jwt_header)
+                                        .code_editor(),
+                                );
                                 ui.add(
                                     TextEdit::multiline(jwt_claims)
                                         .code_editor(),
@@ -199,7 +246,10 @@ impl epi::App for AppState {
                         // Controls
                         ui.horizontal(|ui| {
                             ui.label("Secret: ");
-                            ui.text_edit_singleline(secret);
+                            ui.add(
+                                TextEdit::singleline(secret)
+                                    .text_style(TextStyle::Monospace),
+                            );
                         });
                         ui.horizontal(|ui| {
                             ui.label("Attacks: ");
@@ -354,7 +404,10 @@ impl epi::App for AppState {
                                         ui.add_sized(
                                             ui.available_size(),
                                             egui::TextEdit::singleline(
-                                                &mut atk.token));
+                                                &mut atk.token)
+                                                    .text_style(
+                                                        TextStyle::Monospace)
+                                            );
 
                                 });
                             }

@@ -7,3 +7,9 @@
 ```bash
 cargo run --release
 ```
+
+## License
+
+JWT Explorer is available under the terms of the MIT license.
+
+Fonts used are distributed under the terms of the Open Font License.
