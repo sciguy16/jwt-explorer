@@ -43,10 +43,9 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str) -> Jwt {
                     ) {
                         if signature_to_compare == signature {
                             jwt.signature_valid = true;
-                            info!("Valid signature!");
                         } else {
                             jwt.signature_valid = false;
-                            info!("Signature verification failed");
+
                             debug!(
                                 "Signature mismatch:\ncalc: {}\norig: {}",
                                 signature_to_compare, signature

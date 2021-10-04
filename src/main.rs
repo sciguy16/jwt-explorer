@@ -150,6 +150,14 @@ impl epi::App for AppState {
                     let decoded = decoder::decode_jwt(jwt_input, secret);
                     *jwt_header = decoded.header;
                     *jwt_claims = decoded.claims;
+                    if decoded.signature_valid {
+                        info!("Valid signature!");
+                    } else {
+                        info!("Signature verification failed");
+                    }
+                    if secret.is_empty() {
+                        attack::try_some_common_secrets(jwt_input, secret);
+                    }
                 }
                 if ui.button("Demo").clicked() {
                     *jwt_input = concat!(

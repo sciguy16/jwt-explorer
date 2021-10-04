@@ -1,4 +1,7 @@
+use crate::decoder::decode_jwt;
 use crate::encoder::encode_payload;
+
+const COMMON_SECRETS: &[&str] = &["secret", "password", "1234", "1234567890"];
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Attack {
@@ -23,6 +26,16 @@ pub fn alg_none(claims: &str) -> Vec<Attack> {
     }
 
     attacks
+}
+
+pub fn try_some_common_secrets(jwt_input: &str, secret: &mut String) {
+    for candidate in COMMON_SECRETS {
+        let jwt = decode_jwt(jwt_input, candidate);
+        if jwt.signature_valid {
+            info!("Found secret: '{}'", candidate);
+            *secret = candidate.to_string();
+        }
+    }
 }
 
 #[cfg(test)]
@@ -82,5 +95,25 @@ mod test {
         for (t, e) in tokens.iter().zip(expected) {
             assert_eq!(t, e);
         }
+    }
+
+    #[test]
+    fn brute_force_secrets() {
+        init();
+
+        let jwt_input = concat!(
+            "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+            ".",
+            "eyJleHAiOjE1MTYyMzkwMjIsImlhdCI6MTUxNjIzOTAyMi",
+            "wiaXNfYWRtaW4iOmZhbHNlLCJuYW1lIjoiU3VwZXIgU2Vj",
+            "dXJlIEpXVCBBdXRoIiwic3ViIjoiMTIzNDU2Nzg5MCJ9",
+            ".",
+            "0EC6D80cYS6kjS6iw5bYimCQkUJESOd-8bi0Yku5Zfk"
+        );
+        let mut secret = String::new();
+
+        try_some_common_secrets(jwt_input, &mut secret);
+
+        assert_eq!(secret, "password");
     }
 }
