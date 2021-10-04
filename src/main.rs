@@ -91,6 +91,8 @@ struct AppState {
     jwt_header: String,
     jwt_claims: String,
     secret: String,
+    private_key: String,
+    public_key: String,
     signature_type: SignatureTypes,
     attacks: Vec<Attack>,
     win_size: Pos2,
@@ -175,6 +177,8 @@ impl epi::App for AppState {
             jwt_header,
             jwt_claims,
             secret,
+            private_key,
+            public_key,
             signature_type,
             attacks,
             win_size,
@@ -248,6 +252,20 @@ impl epi::App for AppState {
                             ui.label("Secret: ");
                             ui.add(
                                 TextEdit::singleline(secret)
+                                    .text_style(TextStyle::Monospace),
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Public key: ");
+                            ui.add(
+                                TextEdit::singleline(public_key)
+                                    .text_style(TextStyle::Monospace),
+                            );
+                        });
+                        ui.horizontal(|ui| {
+                            ui.label("Private key: ");
+                            ui.add(
+                                TextEdit::singleline(private_key)
                                     .text_style(TextStyle::Monospace),
                             );
                         });

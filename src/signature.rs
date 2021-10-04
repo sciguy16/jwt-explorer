@@ -14,6 +14,15 @@ pub enum SignatureTypes {
     Hs256,
     Hs384,
     Hs512,
+    Rs256,
+    Rs384,
+    Rs512,
+    Es256,
+    Es384,
+    Es512,
+    Ps256,
+    Ps384,
+    Ps512,
 }
 
 impl Default for SignatureTypes {
