@@ -2,7 +2,7 @@
 #![windows_subsystem = "windows"]
 
 use copypasta::{ClipboardContext, ClipboardProvider};
-use eframe::egui::{self, Pos2, ScrollArea, TextStyle};
+use eframe::egui::{self, Pos2, ScrollArea, TextEdit, TextStyle};
 use eframe::epi;
 use lazy_static::lazy_static;
 use serde::Deserialize;
@@ -168,10 +168,26 @@ impl epi::App for AppState {
                     .to_string();
                 }
             });
+
+            let half_width = ui.available_width() / 2.0;
+            let half_height = win_size.y / 2.5;
+
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
-                    ui.text_edit_multiline(jwt_header);
-                    ui.text_edit_multiline(jwt_claims);
+                    ui.group(|ui| {
+                        ui.set_max_width(half_width);
+                        ui.set_min_height(half_height);
+                        ScrollArea::vertical().id_source("jwt_header").show(
+                            ui,
+                            |ui| {
+                                ui.text_edit_multiline(jwt_header);
+                                ui.add(
+                                    TextEdit::multiline(jwt_claims)
+                                        .code_editor(),
+                                );
+                            },
+                        );
+                    });
                 });
                 ui.vertical(|ui| {
                     ui.group(|ui| {
@@ -298,9 +314,6 @@ impl epi::App for AppState {
                     });
                 }); // controls
             });
-
-            let half_width = ui.available_width() / 2.0;
-            let half_height = win_size.y / 2.0;
 
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {ui.group(|ui|{
