@@ -98,7 +98,6 @@ impl epi::App for AppState {
     }
 
     fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
-        //let Self { name, age } = self;
         let Self {
             jwt_input,
             jwt_header,
@@ -124,12 +123,15 @@ impl epi::App for AppState {
                 }
                 if ui.button("Demo").clicked() {
                     *jwt_input = concat!(
-                        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",".",
+                        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
+                        ".",
                         "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6",
                         "IlN1cGVyIFNlY3VyZSBKV1QgQXV0aCIsImlh",
                         "dCI6MTUxNjIzOTAyMiwiZXhwIjoxNTE2MjM5",
-                        "MDIyLCJpc19hZG1pbiI6ZmFsc2V9",".",
-                        "4ZE1TbfJNpZluGDVH6CBtM9DXx6ZDmWwIk7bPxa2ZNY")
+                        "MDIyLCJpc19hZG1pbiI6ZmFsc2V9",
+                        ".",
+                        "4ZE1TbfJNpZluGDVH6CBtM9DXx6ZDmWwIk7bPxa2ZNY"
+                    )
                     .to_string();
                 }
             });
@@ -268,7 +270,6 @@ impl epi::App for AppState {
             let half_height = win_size.y / 2.0;
 
             ui.horizontal(|ui| {
-
                 ui.vertical(|ui| {ui.group(|ui|{
                         ui.set_max_width(half_width);
                         ui.set_min_height(half_height);
@@ -288,35 +289,27 @@ impl epi::App for AppState {
                                     attacks.get_mut(row_range)
                                     .unwrap_or_default()
                             {
-                                ui.horizontal(|ui| {if ui.button("Copy").clicked() {
+                                ui.horizontal(|ui| {
+                                    if ui.button("Copy").clicked() {
                                         println!(
                                             "Copy this text: {}",
                                             atk.token
                                         );
                                     }
                                     ui.label(format!("{}: ", atk.name));
-                                        ui.add_sized(ui.available_size(),
-                                            egui::TextEdit::singleline(&mut atk.token));
+                                        ui.add_sized(
+                                            ui.available_size(),
+                                            egui::TextEdit::singleline(
+                                                &mut atk.token));
 
                                 });
                             }
                         },
                     );
-/*
-                    for atk in attacks {
-                        ui.horizontal(|ui| {
-                            ui.label(format!("{}: ", atk.name));
-                            ui.text_edit_singleline(&mut atk.token);
-                            if ui.button("Copy").clicked() {
-                                println!("Copy this text: {}", atk.token);
-                            }
-                        });
-                    }*/
                 });
-            });
+                });
                 ui.vertical(|ui| {
                     ui.group(|ui|{
-                        //ui.set_max_width(half_width);
                         ui.set_min_height(half_height);
                     ui.label("Log");
                     ui.add_space(4.0);
@@ -344,9 +337,6 @@ impl epi::App for AppState {
                 });});
             })/*the bottom horizontal()*/;
         });
-
-        // Resize the native window to be just the size we need it to be:
-        // frame.set_window_size(ctx.used_size());
 
         *win_size = ctx.available_rect().max;
     }
