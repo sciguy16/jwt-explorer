@@ -3,8 +3,8 @@
 
 use copypasta::{ClipboardContext, ClipboardProvider};
 use eframe::egui::{
-    self, CtxRef, FontDefinitions, FontFamily, Pos2, ScrollArea, TextEdit,
-    TextStyle,
+    self, CtxRef, FontDefinitions, FontFamily, Label, Pos2, ScrollArea,
+    TextEdit, TextStyle,
 };
 use eframe::epi::{self, Frame, Storage};
 use lazy_static::lazy_static;
@@ -30,7 +30,7 @@ mod signature;
 
 use attack::Attack;
 use json_editor::{update_alg, update_time, TimeOffset};
-use signature::SignatureTypes;
+use signature::{gen_keys, EncodedKey, SignatureTypes};
 
 macro_rules! log_err {
     ($res:expr) => {
@@ -93,6 +93,7 @@ struct AppState {
     secret: String,
     private_key: String,
     public_key: String,
+    signing_key: Option<EncodedKey>,
     signature_type: SignatureTypes,
     attacks: Vec<Attack>,
     win_size: Pos2,
@@ -179,6 +180,7 @@ impl epi::App for AppState {
             secret,
             private_key,
             public_key,
+            signing_key,
             signature_type,
             attacks,
             win_size,
@@ -283,7 +285,10 @@ impl epi::App for AppState {
                         ui.horizontal(|ui| {
                             use TimeOffset::*;
                             let field = "iat";
-                            ui.label("iat:");
+                            ui.add(
+                                Label::new("iat:")
+                                    .text_style(TextStyle::Monospace),
+                            );
                             if ui.button("-24h").clicked() {
                                 log_err!(update_time(
                                     jwt_claims,
@@ -318,7 +323,10 @@ impl epi::App for AppState {
                         ui.horizontal(|ui| {
                             use TimeOffset::*;
                             let field = "exp";
-                            ui.label("exp:");
+                            ui.add(
+                                Label::new("exp:")
+                                    .text_style(TextStyle::Monospace),
+                            );
                             if ui.button("-24h").clicked() {
                                 log_err!(update_time(
                                     jwt_claims,
@@ -370,26 +378,36 @@ impl epi::App for AppState {
                                 ));
                             }
                         });
-                        if ui.button("Encode and sign").clicked() {
-                            debug!("Encode and sign JWT");
-                            match encoder::encode_and_sign(
-                                jwt_header,
-                                jwt_claims,
-                                secret,
-                                *signature_type,
-                            ) {
-                                Ok(token) => {
-                                    debug!("Encode & sign successful");
-                                    attacks.push(Attack {
-                                        name: secret.clone(),
-                                        token,
-                                    });
-                                }
-                                Err(e) => {
-                                    warn!("Error signing token: {}", e);
+                        ui.horizontal(|ui| {
+                            if ui.button("Encode and sign").clicked() {
+                                debug!("Encode and sign JWT");
+                                match encoder::encode_and_sign(
+                                    jwt_header,
+                                    jwt_claims,
+                                    secret,
+                                    *signature_type,
+                                ) {
+                                    Ok(token) => {
+                                        debug!("Encode & sign successful");
+                                        attacks.push(Attack {
+                                            name: secret.clone(),
+                                            token,
+                                        });
+                                    }
+                                    Err(e) => {
+                                        warn!("Error signing token: {}", e);
+                                    }
                                 }
                             }
-                        }
+                            if ui.button("Generate keypair").clicked() {
+                                *signing_key = gen_keys(*signature_type);
+
+                                if let Some(k) = signing_key {
+                                    *private_key = k.private.clone();
+                                    *public_key = k.public.clone();
+                                }
+                            }
+                        });
                     });
                 }); // controls
             });

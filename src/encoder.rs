@@ -44,7 +44,7 @@ pub fn encode_and_sign(
     }
     let payload = encode_payload(header, claims);
     let signature =
-        crate::signature::calc_signature(&payload, secret, hash_type)?;
+        crate::signature::calc_signature(&payload, secret, None, hash_type)?;
 
     Ok(format!("{}.{}", payload, signature))
 }
