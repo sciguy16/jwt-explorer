@@ -97,7 +97,7 @@ impl epi::App for AppState {
         "JWT Explorer"
     }
 
-    fn update(&mut self, ctx: &egui::CtxRef, frame: &mut epi::Frame<'_>) {
+    fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
         //let Self { name, age } = self;
         let Self {
             jwt_input,
@@ -117,11 +117,20 @@ impl epi::App for AppState {
                 ui.label("JWT: ");
                 ui.text_edit_singleline(jwt_input);
                 if ui.button("Decode").clicked() {
-                    info!("Decode clicked");
                     let decoded = decoder::decode_jwt(jwt_input, secret);
                     *jwt_header = decoded.header;
                     *jwt_claims = decoded.claims;
                     *jwt_status = decoded.status.join("\n");
+                }
+                if ui.button("Demo").clicked() {
+                    *jwt_input = concat!(
+                        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",".",
+                        "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6",
+                        "IlN1cGVyIFNlY3VyZSBKV1QgQXV0aCIsImlh",
+                        "dCI6MTUxNjIzOTAyMiwiZXhwIjoxNTE2MjM5",
+                        "MDIyLCJpc19hZG1pbiI6ZmFsc2V9",".",
+                        "4ZE1TbfJNpZluGDVH6CBtM9DXx6ZDmWwIk7bPxa2ZNY")
+                    .to_string();
                 }
             });
             ui.horizontal(|ui| {
@@ -288,7 +297,7 @@ impl epi::App for AppState {
                                     ui.label(format!("{}: ", atk.name));
                                         ui.add_sized(ui.available_size(),
                                             egui::TextEdit::singleline(&mut atk.token));
-                                    
+
                                 });
                             }
                         },
