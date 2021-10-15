@@ -1,3 +1,4 @@
+use anyhow::{anyhow, Context, Result};
 use base64::URL_SAFE_NO_PAD;
 use crypto_hashes::sha2::{Sha256, Sha384, Sha512};
 use hmac::{Hmac, Mac, NewMac};
@@ -5,6 +6,12 @@ use rand_core::OsRng;
 use std::fmt::{self, Display};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
+
+use openssl::ec::EcKey;
+use openssl::ecdsa::EcdsaSig;
+use openssl::hash::MessageDigest;
+use openssl::pkey::PKey;
+use openssl::sign::Signer;
 
 use crate::JwtHeader;
 
@@ -92,15 +99,16 @@ pub struct EncodedKey {
 pub fn calc_signature(
     payload: &str,
     secret: &str,
-    key: Option<EncodedKey>,
+    key: Option<&[u8]>,
     hash_type: SignatureTypes,
-) -> Result<String, String> {
+) -> Result<String> {
     use SignatureTypes::*;
+
     match hash_type {
         Hs256 => {
             // HMAC using SHA-256
             let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes())
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| anyhow!("{}", e))?;
             mac.update(payload.as_bytes());
             let result = mac.finalize();
             let signature_bytes = result.into_bytes();
@@ -110,7 +118,7 @@ pub fn calc_signature(
         Hs384 => {
             // HMAC using SHA-384
             let mut mac = Hmac::<Sha384>::new_from_slice(secret.as_bytes())
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| anyhow!("{}", e))?;
             mac.update(payload.as_bytes());
             let result = mac.finalize();
             let signature_bytes = result.into_bytes();
@@ -120,7 +128,7 @@ pub fn calc_signature(
         Hs512 => {
             // HMAC using SHA-512
             let mut mac = Hmac::<Sha512>::new_from_slice(secret.as_bytes())
-                .map_err(|e| e.to_string())?;
+                .map_err(|e| anyhow!("{}", e))?;
             mac.update(payload.as_bytes());
             let result = mac.finalize();
             let signature_bytes = result.into_bytes();
@@ -129,12 +137,26 @@ pub fn calc_signature(
         }
         Es256 => {
             // ECDSA using P-256 and SHA-256
-
-            todo!()
+            let sk = PKey::from_ec_key(EcKey::private_key_from_der(
+                key.context("No key provided")?,
+            )?)?;
+            let mut signer = Signer::new(MessageDigest::sha256(), &sk)?;
+            signer.update(payload.as_bytes())?;
+            let sig = signer.sign_to_vec()?;
+            debug!("raw sig: {}", base64::encode(&sig));
+            encode_der(&sig)
         }
         None => Ok("".to_string()),
-        _ => Err(format!("Unrecognised signature type: {}", hash_type)),
+        _ => Err(anyhow!("Unrecognised signature type: {}", hash_type)),
     }
+}
+
+fn encode_der(sig: &[u8]) -> Result<String> {
+    let sig = der_to_jose(sig)?;
+    //.map_err(|e| anyhow!("{:?}", e))?;
+    debug!("{:?}", sig);
+    //todo!()
+    Ok(base64::encode_config(sig, URL_SAFE_NO_PAD))
 }
 
 pub fn gen_keys(alg: SignatureTypes) -> Option<EncodedKey> {
@@ -155,6 +177,29 @@ pub fn gen_keys(alg: SignatureTypes) -> Option<EncodedKey> {
         _ => std::option::Option::None,
     }
 }
+
+/// OpenSSL by default signs ECDSA in DER, but JOSE expects them in a
+/// concatenated (R, S) format
+/// https://github.com/mikkyang/rust-jwt/blob/master/src/algorithm/openssl.rs
+fn der_to_jose(der: &[u8]) -> Result<Vec<u8>> {
+    let signature = EcdsaSig::from_der(der)?;
+    let r = signature.r().to_vec();
+    let s = signature.s().to_vec();
+    Ok([r, s].concat())
+}
+
+/*
+/// OpenSSL by default verifies ECDSA in DER, but JOSE parses out a
+/// concatenated (R, S) format
+/// https://github.com/mikkyang/rust-jwt/blob/master/src/algorithm/openssl.rs
+fn jose_to_der(jose: &[u8]) -> Result<Vec<u8>> {
+    let (r, s) = jose.split_at(jose.len() / 2);
+    let ecdsa_signature = EcdsaSig::from_private_components(
+        BigNum::from_slice(r)?,
+        BigNum::from_slice(s)?,
+    )?;
+    Ok(ecdsa_signature.to_der()?)
+}*/
 
 #[cfg(test)]
 mod test {
@@ -226,5 +271,46 @@ mod test {
         // Probably can't test anything here apart from that the
         // function runs and returns a Some, since the keys will be
         // randomly generated each time
+    }
+
+    #[test]
+    fn es256() {
+        init();
+
+        let payload =
+            "eyJhbGciOiJIUzUxMiIsInR5cGUiOiJKV1QifQ.eyJoZWxsbyI6IndvcmxkIn0";
+        let expected = concat!(
+            "tyh-VfuzIxCyGYDlkBA7DfyjrqmSHu6pQ2hoZuFqUSLPN",
+            "Y2N0mpHb3nk5K17HWP_3cYHBw7AhHale5wky6-sVA"
+        );
+
+        let _public = "-----BEGIN EC PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+uQbTjL3chynL4wXgUg2R9
+q9UU8I5mEovUf86QZ7kOBIjJwqnzD1omageEHWwHdBO6B+dFabmdT9POxg==
+-----END EC PUBLIC KEY-----";
+        let private = "-----BEGIN EC PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgevZzL1gdAFr88hb2
+OF/2NxApJCzGCEDdfSp6VQO30hyhRANCAAQRWz+jn65BtOMvdyHKcvjBeBSDZH2r
+1RTwjmYSi9R/zpBnuQ4EiMnCqfMPWiZqB4QdbAd0E7oH50VpuZ1P087G
+-----END EC PRIVATE KEY-----";
+
+        let key = EcKey::private_key_from_pem(private.as_bytes()).unwrap();
+
+        /*debug!(
+            "Private:\n{}",
+            String::from_utf8(key.private_key_to_pem().unwrap()).unwrap()
+        );
+        debug!(
+            "Public:\n{}",
+            String::from_utf8(key.public_key_to_pem().unwrap()).unwrap()
+        );*/
+        let key = key.private_key_to_der().unwrap();
+        debug!("b64 key:\n{}", base64::encode(&key));
+
+        let signature =
+            calc_signature(payload, "", Some(&key), SignatureTypes::Es256)
+                .unwrap();
+
+        assert_eq!(signature, expected);
     }
 }

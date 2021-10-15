@@ -1,5 +1,6 @@
 use crate::signature::SignatureTypes;
 use crate::JwtHeader;
+use anyhow::{anyhow, Result};
 use base64::URL_SAFE_NO_PAD;
 use serde_json::Value;
 
@@ -31,15 +32,14 @@ pub fn encode_and_sign(
     claims: &str,
     secret: &str,
     mut hash_type: SignatureTypes,
-) -> Result<String, String> {
+) -> Result<String> {
     // If hash type is auto then try to parse the header and pick the
     // correct hash type
     if hash_type == SignatureTypes::Auto {
-        let jwt_header: JwtHeader =
-            serde_json::from_str(header).map_err(|e| e.to_string())?;
+        let jwt_header: JwtHeader = serde_json::from_str(header)?;
         hash_type =
             SignatureTypes::from_header(&jwt_header).ok_or_else(|| {
-                format!("Unrecognised signature type `{}`", jwt_header.alg)
+                anyhow!("Unrecognised signature type `{}`", jwt_header.alg)
             })?;
     }
     let payload = encode_payload(header, claims);
