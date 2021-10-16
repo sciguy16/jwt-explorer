@@ -30,7 +30,7 @@ mod signature;
 
 use attack::Attack;
 use json_editor::{update_alg, update_time, TimeOffset};
-use signature::{gen_keys, EncodedKey, SignatureTypes};
+use signature::SignatureTypes;
 
 macro_rules! log_err {
     ($res:expr) => {
@@ -93,7 +93,6 @@ struct AppState {
     secret: String,
     private_key: String,
     public_key: String,
-    signing_key: Option<EncodedKey>,
     signature_type: SignatureTypes,
     attacks: Vec<Attack>,
     win_size: Pos2,
@@ -180,7 +179,6 @@ impl epi::App for AppState {
             secret,
             private_key,
             public_key,
-            signing_key,
             signature_type,
             attacks,
             win_size,
@@ -397,14 +395,6 @@ impl epi::App for AppState {
                                     Err(e) => {
                                         warn!("Error signing token: {}", e);
                                     }
-                                }
-                            }
-                            if ui.button("Generate keypair").clicked() {
-                                *signing_key = gen_keys(*signature_type);
-
-                                if let Some(k) = signing_key {
-                                    *private_key = k.private.clone();
-                                    *public_key = k.public.clone();
                                 }
                             }
                         });

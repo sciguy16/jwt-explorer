@@ -32,7 +32,7 @@ pub fn try_some_common_secrets(jwt_input: &str, secret: &mut String) {
     for candidate in COMMON_SECRETS {
         let jwt = decode_jwt(jwt_input, candidate);
         if jwt.signature_valid {
-            info!("Found secret: '{}'", candidate);
+            info!("Guessed secret: '{}'", candidate);
             *secret = candidate.to_string();
         }
     }

@@ -39,7 +39,6 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str) -> Jwt {
                     if let Ok(signature_to_compare) = signature::calc_signature(
                         &signing_payload,
                         secret,
-                        None,
                         sig_type,
                     ) {
                         if signature_to_compare == signature {
