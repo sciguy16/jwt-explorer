@@ -50,8 +50,9 @@ jobs:
           override: true
 
       - name: Install dependencies
-        if: ${{ github.RUNNER_OS == "Linux" }}
-        run: |
+        with:
+          if: ${{ github.RUNNER_OS == 'Linux' }}
+          run: |
           sudo apt-get install \
             libxcb-shape0-dev \
             libxcb-xfixes0-dev \
