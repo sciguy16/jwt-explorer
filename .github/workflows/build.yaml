@@ -52,7 +52,7 @@ jobs:
       - name: Install dependencies
         with:
           if: ${{ github.RUNNER_OS == 'Linux' }}
-          run: |
+        run: |
             sudo apt-get install \
               libxcb-shape0-dev \
               libxcb-xfixes0-dev \
