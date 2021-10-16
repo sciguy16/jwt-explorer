@@ -19,7 +19,7 @@ cargo run --release
 
 ## License
 
-JWT Explorer is available under the terms of both the MIT license and
+JWT Explorer is available under the terms of either the MIT license or
 the Apache License (Version 2.0).
 
 Fonts used are distributed under the terms of the Open Font License.

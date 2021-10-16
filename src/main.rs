@@ -186,7 +186,10 @@ impl epi::App for AppState {
         } = self;
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.heading("JWT Explorer");
+            ui.horizontal(|ui| {
+                ui.heading("JWT Explorer");
+                ui.hyperlink("https://github.com/sciguy16/jwt-explorer");
+            });
             ui.label("Hint: pop the JWT into Hashcat to check for weak keys");
             ui.horizontal(|ui| {
                 ui.label("JWT: ");

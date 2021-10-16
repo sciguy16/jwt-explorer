@@ -1,0 +1,187 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+jobs:
+  create_new_release:
+    name: Create release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.parse_changelog.outputs.version }}
+      version_num: ${{ steps.parse_changelog.outputs.version_num }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Parse changelog
+        id: parse_changelog
+        env:
+          VERSION: ${{ github.ref }}
+        run: |
+          # Extract the tag name from the github ref (e.g. revs/tags/v0.1.0)
+          VERSION=${VERSION:10}
+          # VERSION_NUM is the version but without the v on the front
+          VERSION_NUM=${VERSION:1}
+          # Grab the current release section from the changelog
+          BODY=$(sed -n "/$VERSION/,/^## /p" Changelog.md | head -n-1)
+          # URL-encode percent, LF, CR
+          BODY="${BODY//'%'/'%25'}"
+          BODY="${BODY//$'\n'/'%0A'}"
+          BODY="${BODY//$'\r'/'%0D'}"
+          # Store the release body for the next step
+          echo "::set-output name=BODY::${BODY}"
+          echo "::set-output name=version::${VERSION}"
+          echo "::set-output name=version_num::${VERSION_NUM}"
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: ${{ steps.parse_changelog.outputs.BODY }}
+          draft: false
+          prerelease: false
+
+  build_linux_release:
+    name: Build Linux releases
+    runs-on: ubuntu-latest
+    needs: create_new_release
+    steps:
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install \
+              libxcb-shape0-dev \
+              libxcb-xfixes0-dev \
+              libxkbcommon-dev
+
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: Install cargo-deb
+        run: cargo install cargo-deb
+
+      - name: Build debian package
+        run: |
+          cargo deb
+
+      - name: Zip binary
+        run: |
+          # Stick the binary and readme into a directory and zip the directory
+          mkdir jwt-explorer
+          cp README.md Changelog.md jwt-explorer/
+          cp target/release/jwt-explorer jwt-explorer/
+          zip -r \
+            jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_linux.zip \
+            jwt-explorer
+
+      - name: Upload deb
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_new_release.outputs.upload_url }}
+          asset_path: |
+            target/debian/jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64.deb
+          asset_name: |
+            jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64.deb
+          asset_content_type: application/vnd.debian.binary-package
+
+      - name: Upload zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_new_release.outputs.upload_url }}
+          asset_path: |
+            jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_linux.zip
+          asset_name: |
+            jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_linux.zip
+          asset_content_type: application/zip
+
+  build_windows_release:
+    name: Build Windows release
+    runs-on: windows-latest
+    needs: create_new_release
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - name: Install stable toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: stable
+
+      - name: Build
+        run: cargo build --release
+
+      - name: Zip binary
+        shell: powershell
+        run: |
+          $opts = @{
+            Path = ".\target\release\jwt-explorer.exe", ".\README.md", ".\Changelog.md"
+            DestinationPath = "jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_windows.zip"
+          }
+          Compress-Archive @opts
+
+      - name: Upload zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create_new_release.outputs.upload_url }}
+          asset_path: jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_windows.zip
+          asset_name: jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_windows.zip
+          asset_content_type: application/zip
+
+  # build_macos_release:
+  #   name: Build macos releases
+  #   runs-on: macOS-latest
+  #   needs: create_new_release
+  #   steps:
+  #     - name: Checkout sources
+  #       uses: actions/checkout@v2
+
+  #     - name: Install stable toolchain
+  #       uses: actions-rs/toolchain@v1
+  #       with:
+  #         profile: minimal
+  #         toolchain: stable
+
+  #     - name: Build
+  #       run: cargo build --release
+
+  #     - name: Zip binary
+  #       run: |
+  #         # Stick the binary and readme into a directory and zip the directory
+  #         mkdir jwt-explorer
+  #         cp README.md Changelog.md jwt-explorer/
+  #         cp target/release/jwt-explorer jwt-explorer/
+  #         zip -r \
+  #           jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_macos.zip \
+  #           jwt-explorer
+
+  #     - name: Upload zip
+  #       uses: actions/upload-release-asset@v1
+  #       env:
+  #         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  #       with:
+  #         upload_url: ${{ needs.create_new_release.outputs.upload_url }}
+  #         asset_path: |
+  #           jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_macos.zip
+  #         asset_name: |
+  #           jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_macos.zip
+  #         asset_content_type: application/zip
