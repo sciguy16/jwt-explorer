@@ -49,10 +49,6 @@ jobs:
           toolchain: stable
           override: true
 
-      - name: test
-        run: |
-          echo ${{ matrix.os }}
-
       - name: Install dependencies
         if: matrix.os == 'ubuntu-latest'
         run: |
