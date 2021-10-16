@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
-Added `libxcb-render0` to deb dependencies
+* Include build version and date in the title
+* Added `libxcb-render0` to deb dependencies
 
 ### Deprecated
 

@@ -32,6 +32,15 @@ use attack::Attack;
 use json_editor::{update_alg, update_time, TimeOffset};
 use signature::SignatureTypes;
 
+const VERSION: &str = env!("CARGO_PKG_VERSION");
+lazy_static! {
+    static ref BUILD_DATE: &'static str =
+        option_env!("DATE").unwrap_or_default();
+    static ref WINDOW_TITLE: String =
+        format!("JWT Explorer - {}, built on {}", VERSION, *BUILD_DATE);
+    static ref BUILD_HEADER: String = format!("v{} ({})", VERSION, *BUILD_DATE);
+}
+
 macro_rules! log_err {
     ($res:expr) => {
         if let Err(e) = $res {
@@ -131,7 +140,7 @@ impl Clipboard {
 
 impl epi::App for AppState {
     fn name(&self) -> &str {
-        "JWT Explorer"
+        &WINDOW_TITLE
     }
 
     fn setup(
@@ -187,7 +196,8 @@ impl epi::App for AppState {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.heading("JWT Explorer");
+                ui.heading("JWT Explorer ");
+                ui.label(&*BUILD_HEADER);
                 ui.hyperlink("https://github.com/sciguy16/jwt-explorer");
             });
             ui.label("Hint: pop the JWT into Hashcat to check for weak keys");

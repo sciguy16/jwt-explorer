@@ -1,6 +1,6 @@
 [package]
 name = "jwt-explorer"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2018"
 description = "Decode, explore, and sign JWTs"
 repository = "https://github.com/sciguy16/jwt-explorer"
@@ -28,6 +28,9 @@ strum_macros = "0.22"
 [dependencies.eframe]
 git = "https://github.com/emilk/egui"
 rev = "bd06dec"
+
+[build-dependencies]
+chrono = "0.4"
 
 [package.metadata.deb]
 depends = "libxcb-shape0, libxcb-xfixes0, libxkbcommon0, libxcb-render0"
