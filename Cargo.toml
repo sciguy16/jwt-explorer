@@ -30,7 +30,7 @@ git = "https://github.com/emilk/egui"
 rev = "bd06dec"
 
 [package.metadata.deb]
-depends = "libxcb-shape0, libxcb-xfixes0, libxkbcommon0"
+depends = "libxcb-shape0, libxcb-xfixes0, libxkbcommon0, libxcb-render0"
 extended-description = """\
 Decode, explore, and sign JWTs\
 """
