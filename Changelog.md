@@ -8,9 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 ### Changed
-* If no secret provided then guess common values *before* validating the signature
-* Include build version and date in the title
-* Added `libxcb-render0` to deb dependencies
 
 ### Deprecated
 
@@ -20,6 +17,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+
+## [v0.2.0]
+### Changed
+* If no secret provided then guess common values *before* validating the signature
+* Include build version and date in the title
+* Added `libxcb-render0` to deb dependencies
 
 ## [v0.1.0]
 Initial release. Features:
