@@ -204,6 +204,9 @@ impl epi::App for AppState {
                         .text_style(TextStyle::Monospace),
                 );
                 if ui.button("Decode").clicked() {
+                    if secret.is_empty() {
+                        attack::try_some_common_secrets(jwt_input, secret);
+                    }
                     let decoded = decoder::decode_jwt(jwt_input, secret);
                     *jwt_header = decoded.header;
                     *jwt_claims = decoded.claims;
@@ -211,9 +214,6 @@ impl epi::App for AppState {
                         info!("Valid signature!");
                     } else {
                         info!("Signature verification failed");
-                    }
-                    if secret.is_empty() {
-                        attack::try_some_common_secrets(jwt_input, secret);
                     }
                 }
                 if ui.button("Demo").clicked() {
