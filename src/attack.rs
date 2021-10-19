@@ -25,6 +25,8 @@ pub fn alg_none(claims: &str) -> Vec<Attack> {
         });
     }
 
+    info!("Hint: try the alg:none payloads with and without the trailing dot!");
+
     attacks
 }
 
