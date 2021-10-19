@@ -401,7 +401,16 @@ impl epi::App for AppState {
                 ui.vertical(|ui| {ui.group(|ui|{
                         ui.set_max_width(half_width);
                         ui.set_min_height(half_height);
-                    ui.label("Generated attack payloads:");
+                    ui.horizontal(|ui| {
+                        ui.label("Generated attack payloads:");
+                        let clear_button = Button::new("Clear")
+                            .fill(Color32::from_rgb(0xa0, 0, 0))
+                            .text_color(Color32::WHITE);
+                        if ui.add(clear_button).clicked() {
+                            info!("Deleted {} attacks", attacks.len());
+                            attacks.clear();
+                        }
+                    });
 
                     ui.add_space(4.0);
 
@@ -430,7 +439,6 @@ impl epi::App for AppState {
                                         .fill(Color32::from_rgb(0xa0, 0, 0))
                                         .text_color(Color32::WHITE);
                                     if ui.add(delete_button).clicked() {
-                                        println!("Delete {:?}", atk);
                                         atk.token = DELETE_TOKEN_MAGIC_VALUE
                                             .to_string();
                                     }
