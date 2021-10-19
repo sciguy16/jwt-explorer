@@ -398,95 +398,101 @@ impl epi::App for AppState {
             });
 
             ui.horizontal(|ui| {
-                ui.vertical(|ui| {ui.group(|ui|{
+                ui.vertical(|ui| {
+                    ui.group(|ui| {
                         ui.set_max_width(half_width);
                         ui.set_min_height(half_height);
-                    ui.horizontal(|ui| {
-                        ui.label("Generated attack payloads:");
-                        let clear_button = Button::new("Clear")
-                            .fill(Color32::from_rgb(0xa0, 0, 0))
-                            .text_color(Color32::WHITE);
-                        if ui.add(clear_button).clicked() {
-                            info!("Deleted {} attacks", attacks.len());
-                            attacks.clear();
-                        }
-                    });
+                        ui.horizontal(|ui| {
+                            ui.label("Generated attack payloads:");
+                            let clear_button = Button::new("Clear")
+                                .fill(Color32::from_rgb(0xa0, 0, 0))
+                                .text_color(Color32::WHITE);
+                            if ui.add(clear_button).clicked() {
+                                info!("Deleted {} attacks", attacks.len());
+                                attacks.clear();
+                            }
+                        });
 
-                    ui.add_space(4.0);
+                        ui.add_space(4.0);
 
-                    let row_height = ui.spacing().interact_size.y;
-                    let num_rows = attacks.len();
+                        let row_height = ui.spacing().interact_size.y;
+                        let num_rows = attacks.len();
 
-                    ScrollArea::vertical().id_source("attacks").show_rows(
-                        ui,
-                        row_height,
-                        num_rows,
-                        |ui, row_range| {
-                            const DELETE_TOKEN_MAGIC_VALUE: &str =
-                                "MARKED_FOR_DELETION";
-                            for atk in
-                                    attacks.get_mut(row_range)
+                        ScrollArea::vertical().id_source("attacks").show_rows(
+                            ui,
+                            row_height,
+                            num_rows,
+                            |ui, row_range| {
+                                const DELETE_TOKEN_MAGIC_VALUE: &str =
+                                    "MARKED_FOR_DELETION";
+                                for atk in attacks
+                                    .get_mut(row_range)
                                     .unwrap_or_default()
-                            {
-                                ui.horizontal(|ui| {
-                                    let copy_button = Button::new("Copy")
-                                        .fill(Color32::from_rgb(0, 0, 0xc0))
-                                        .text_color(Color32::WHITE);
-                                    if ui.add(copy_button).clicked() {
-                                        clipboard.put(&atk.token);
-                                    }
-                                    let delete_button = Button::new("Delete")
-                                        .fill(Color32::from_rgb(0xa0, 0, 0))
-                                        .text_color(Color32::WHITE);
-                                    if ui.add(delete_button).clicked() {
-                                        atk.token = DELETE_TOKEN_MAGIC_VALUE
-                                            .to_string();
-                                    }
-                                    ui.label(format!("{}: ", atk.name));
+                                {
+                                    ui.horizontal(|ui| {
+                                        let copy_button = Button::new("Copy")
+                                            .fill(Color32::from_rgb(0, 0, 0xc0))
+                                            .text_color(Color32::WHITE);
+                                        if ui.add(copy_button).clicked() {
+                                            clipboard.put(&atk.token);
+                                        }
+                                        let delete_button =
+                                            Button::new("Delete")
+                                                .fill(Color32::from_rgb(
+                                                    0xa0, 0, 0,
+                                                ))
+                                                .text_color(Color32::WHITE);
+                                        if ui.add(delete_button).clicked() {
+                                            atk.token =
+                                                DELETE_TOKEN_MAGIC_VALUE
+                                                    .to_string();
+                                        }
+                                        ui.label(format!("{}: ", atk.name));
                                         ui.add_sized(
                                             ui.available_size(),
                                             egui::TextEdit::singleline(
-                                                &mut atk.token)
-                                                    .text_style(
-                                                        TextStyle::Monospace)
-                                            );
-
+                                                &mut atk.token,
+                                            )
+                                            .text_style(TextStyle::Monospace),
+                                        );
+                                    });
+                                }
+                                attacks.retain(|atk| {
+                                    atk.token != DELETE_TOKEN_MAGIC_VALUE
                                 });
-                            }
-                            attacks.retain(|atk|
-                                atk.token != DELETE_TOKEN_MAGIC_VALUE);
-                        },
-                    );
-                });
+                            },
+                        );
+                    });
                 });
                 ui.vertical(|ui| {
-                    ui.group(|ui|{
+                    ui.group(|ui| {
                         ui.set_min_height(half_height);
-                    ui.label("Log");
-                    ui.add_space(4.0);
+                        ui.label("Log");
+                        ui.add_space(4.0);
 
-                    let text_style = TextStyle::Body;
-                    let row_height = ui.fonts()[text_style].row_height();
-                    let num_rows = LOG.len();
+                        let text_style = TextStyle::Body;
+                        let row_height = ui.fonts()[text_style].row_height();
+                        let num_rows = LOG.len();
 
-                    ScrollArea::vertical().id_source("logs").show_rows(
-                        ui,
-                        row_height,
-                        num_rows,
-                        |ui, row_range| {
-                            for row in LOG
-                                .inner
-                                .read()
-                                .unwrap()
-                                .get(row_range)
-                                .unwrap_or_default()
-                            {
-                                ui.label(row);
-                            }
-                        },
-                    );
-                });});
-            })/*the bottom horizontal()*/;
+                        ScrollArea::vertical().id_source("logs").show_rows(
+                            ui,
+                            row_height,
+                            num_rows,
+                            |ui, row_range| {
+                                for row in LOG
+                                    .inner
+                                    .read()
+                                    .unwrap()
+                                    .get(row_range)
+                                    .unwrap_or_default()
+                                {
+                                    ui.label(row);
+                                }
+                            },
+                        );
+                    });
+                });
+            }) // the bottom horizontal()
         });
 
         *win_size = ctx.available_rect().max;
@@ -517,12 +523,14 @@ mod test {
     use super::*;
     use simplelog::TestLogger;
 
-    const JWT_HS384: &str = "\
-        eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9.\
-        eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYWRtaW4iOnR\
-        ydWUsImlhdCI6MTUxNjIzOTAyMn0.IpWe_5UPstkFk6Wt8UNv2XillMQXRcVzr6i\
-        WcRF-50VDwq40g0xzLaV-Zvj1yHx6\
-        ";
+    const JWT_HS384: &str = concat!(
+        "eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9",
+        ".",
+        "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG",
+        "9lIiwiYWRtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0",
+        ".",
+        "IpWe_5UPstkFk6Wt8UNv2XillMQXRcVzr6iWcRF-50VDwq40g0xzLaV-Zvj1yHx6"
+    );
     const JWT_HS384_DECODED: (&str, &str) = (
         r#"{
   "alg": "HS384",
