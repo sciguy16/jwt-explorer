@@ -3,8 +3,8 @@
 
 use copypasta::{ClipboardContext, ClipboardProvider};
 use eframe::egui::{
-    self, CtxRef, FontDefinitions, FontFamily, Label, Pos2, ScrollArea,
-    TextEdit, TextStyle,
+    self, Button, Color32, CtxRef, FontDefinitions, FontFamily, Label, Pos2,
+    ScrollArea, TextEdit, TextStyle,
 };
 use eframe::epi::{self, Frame, Storage};
 use lazy_static::lazy_static;
@@ -413,13 +413,26 @@ impl epi::App for AppState {
                         row_height,
                         num_rows,
                         |ui, row_range| {
+                            const DELETE_TOKEN_MAGIC_VALUE: &str =
+                                "MARKED_FOR_DELETION";
                             for atk in
                                     attacks.get_mut(row_range)
                                     .unwrap_or_default()
                             {
                                 ui.horizontal(|ui| {
-                                    if ui.button("Copy").clicked() {
+                                    let copy_button = Button::new("Copy")
+                                        .fill(Color32::from_rgb(0, 0, 0xc0))
+                                        .text_color(Color32::WHITE);
+                                    if ui.add(copy_button).clicked() {
                                         clipboard.put(&atk.token);
+                                    }
+                                    let delete_button = Button::new("Delete")
+                                        .fill(Color32::from_rgb(0xa0, 0, 0))
+                                        .text_color(Color32::WHITE);
+                                    if ui.add(delete_button).clicked() {
+                                        println!("Delete {:?}", atk);
+                                        atk.token = DELETE_TOKEN_MAGIC_VALUE
+                                            .to_string();
                                     }
                                     ui.label(format!("{}: ", atk.name));
                                         ui.add_sized(
@@ -432,6 +445,8 @@ impl epi::App for AppState {
 
                                 });
                             }
+                            attacks.retain(|atk|
+                                atk.token != DELETE_TOKEN_MAGIC_VALUE);
                         },
                     );
                 });
