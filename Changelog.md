@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+## [v0.3.1]
+### Fixed
+* Fixed broken Windows build
 
 ## [v0.3.0]
 ### Added
