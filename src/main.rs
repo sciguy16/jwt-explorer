@@ -59,6 +59,10 @@ impl Log {
     pub fn len(&self) -> usize {
         self.inner.read().unwrap().len()
     }
+
+    pub fn clear(&self) {
+        self.inner.write().unwrap().clear();
+    }
 }
 
 impl Write for Log {
@@ -467,7 +471,15 @@ impl epi::App for AppState {
                 ui.vertical(|ui| {
                     ui.group(|ui| {
                         ui.set_min_height(half_height);
-                        ui.label("Log");
+                        ui.horizontal(|ui| {
+                            ui.label("Log");
+                            let clear_button = Button::new("Clear")
+                                .fill(Color32::from_rgb(0xa0, 0, 0))
+                                .text_color(Color32::WHITE);
+                            if ui.add(clear_button).clicked() {
+                                LOG.clear();
+                            }
+                        });
                         ui.add_space(4.0);
 
                         let text_style = TextStyle::Body;

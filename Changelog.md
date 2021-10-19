@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 * Add UI buttons to delete generated tokens and clear the entire list
+* Add UI button to clear log entries
 
 ### Changed
 
