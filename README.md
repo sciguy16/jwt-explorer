@@ -1,5 +1,9 @@
 # JWT Explorer
 
+A utility for inspecting, modifying, and attacking JWTs.
+
+Supports Windows and Linux and probably also works on macOS but this has not been tested.
+
 ![Overview of JWT Explorer](images/overview.png)
 
 ## Usage
@@ -7,6 +11,8 @@
 ```bash
 cargo run --release
 ```
+
+Or download the latest release for your platform from [the releases page](https://github.com/sciguy16/jwt-explorer/releases)!
 
 ## Features
 
