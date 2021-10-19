@@ -1,11 +1,9 @@
 // On Windows platform, don't show a console when opening the app.
 #![windows_subsystem = "windows"]
+#![forbid(unsafe_code)]
 
 use copypasta::{ClipboardContext, ClipboardProvider};
-use eframe::egui::{
-    self, Button, Color32, CtxRef, FontDefinitions, FontFamily, Label, Pos2,
-    ScrollArea, TextEdit, TextStyle,
-};
+use eframe::egui::{self, CtxRef, FontDefinitions, FontFamily, Pos2};
 use eframe::epi::{self, Frame, Storage};
 use lazy_static::lazy_static;
 use serde::Deserialize;
@@ -16,20 +14,19 @@ use simplelog::{
 use std::borrow::Cow;
 use std::io::{self, Write};
 use std::sync::{Arc, RwLock};
-use std::time::Duration;
-use strum::IntoEnumIterator;
+
 #[macro_use]
 extern crate log;
 
 mod attack;
 mod decoder;
 mod encoder;
+mod gui;
 mod json_editor;
 mod json_formatter;
 mod signature;
 
 use attack::Attack;
-use json_editor::{update_alg, update_time, TimeOffset};
 use signature::SignatureTypes;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -41,6 +38,7 @@ lazy_static! {
     static ref BUILD_HEADER: String = format!("v{} ({})", VERSION, *BUILD_DATE);
 }
 
+#[macro_export]
 macro_rules! log_err {
     ($res:expr) => {
         if let Err(e) = $res {
@@ -195,316 +193,60 @@ impl epi::App for AppState {
         } = self;
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            ui.horizontal(|ui| {
-                ui.heading("JWT Explorer ");
-                ui.label(&*BUILD_HEADER);
-                ui.hyperlink("https://github.com/sciguy16/jwt-explorer");
-            });
-            ui.label("Hint: pop the JWT into Hashcat to check for weak keys");
-            ui.horizontal(|ui| {
-                ui.label("JWT: ");
-                ui.add(
-                    TextEdit::singleline(jwt_input)
-                        .text_style(TextStyle::Monospace),
-                );
-                if ui.button("Decode").clicked() {
-                    if secret.is_empty() {
-                        attack::try_some_common_secrets(jwt_input, secret);
-                    }
-                    let decoded = decoder::decode_jwt(jwt_input, secret);
-                    *jwt_header = decoded.header;
-                    *jwt_claims = decoded.claims;
-                    if decoded.signature_valid {
-                        info!("Valid signature!");
-                    } else {
-                        info!("Signature verification failed");
-                    }
-                }
-                if ui.button("Demo").clicked() {
-                    *jwt_input = concat!(
-                        "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
-                        ".",
-                        "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6",
-                        "IlN1cGVyIFNlY3VyZSBKV1QgQXV0aCIsImlh",
-                        "dCI6MTUxNjIzOTAyMiwiZXhwIjoxNTE2MjM5",
-                        "MDIyLCJpc19hZG1pbiI6ZmFsc2V9",
-                        ".",
-                        "4ZE1TbfJNpZluGDVH6CBtM9DXx6ZDmWwIk7bPxa2ZNY"
-                    )
-                    .to_string();
-                }
-            });
+            gui::header(ui);
+            gui::jwt_entry(ui, jwt_input, secret, jwt_header, jwt_claims);
 
             let half_width = ui.available_width() / 2.0;
             let half_height = win_size.y / 2.5;
 
+            // Upper/middle section of window with details and controls
             ui.horizontal(|ui| {
-                ui.vertical(|ui| {
-                    ui.group(|ui| {
-                        ui.set_max_width(half_width);
-                        ui.set_min_height(half_height);
-                        ScrollArea::vertical().id_source("jwt_header").show(
-                            ui,
-                            |ui| {
-                                ui.add(
-                                    TextEdit::multiline(jwt_header)
-                                        .code_editor(),
-                                );
-                                ui.add(
-                                    TextEdit::multiline(jwt_claims)
-                                        .code_editor(),
-                                );
-                            },
-                        );
-                    });
-                });
+                gui::header_and_claims(
+                    ui,
+                    half_width,
+                    half_height,
+                    jwt_header,
+                    jwt_claims,
+                );
                 ui.vertical(|ui| {
                     ui.group(|ui| {
                         // Controls
-                        ui.horizontal(|ui| {
-                            ui.label("Secret: ");
-                            ui.add(
-                                TextEdit::singleline(secret)
-                                    .text_style(TextStyle::Monospace),
-                            );
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Attacks: ");
-                            if ui.button("Alg:none").clicked() {
-                                debug!("Generating Alg:None attacks");
-                                let generated_attacks =
-                                    attack::alg_none(jwt_claims);
-                                for attack in generated_attacks {
-                                    attacks.push(attack);
-                                }
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            use TimeOffset::*;
-                            let field = "iat";
-                            ui.add(
-                                Label::new("iat:")
-                                    .text_style(TextStyle::Monospace),
-                            );
-                            if ui.button("-24h").clicked() {
-                                log_err!(update_time(
-                                    jwt_claims,
-                                    field,
-                                    Minus(Duration::from_secs(60 * 60 * 24)),
-                                ));
-                            }
-                            if ui.button("+24h").clicked() {
-                                log_err!(update_time(
-                                    jwt_claims,
-                                    field,
-                                    Plus(Duration::from_secs(60 * 60 * 24)),
-                                ));
-                            }
-                            if ui.button("+7d").clicked() {
-                                log_err!(update_time(
-                                    jwt_claims,
-                                    field,
-                                    Plus(Duration::from_secs(60 * 60 * 24 * 7)),
-                                ));
-                            }
-                            if ui.button("+365d").clicked() {
-                                log_err!(update_time(
-                                    jwt_claims,
-                                    field,
-                                    Plus(Duration::from_secs(
-                                        60 * 60 * 24 * 365
-                                    )),
-                                ));
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            use TimeOffset::*;
-                            let field = "exp";
-                            ui.add(
-                                Label::new("exp:")
-                                    .text_style(TextStyle::Monospace),
-                            );
-                            if ui.button("-24h").clicked() {
-                                log_err!(update_time(
-                                    jwt_claims,
-                                    field,
-                                    Minus(Duration::from_secs(60 * 60 * 24)),
-                                ));
-                            }
-                            if ui.button("+24h").clicked() {
-                                log_err!(update_time(
-                                    jwt_claims,
-                                    field,
-                                    Plus(Duration::from_secs(60 * 60 * 24)),
-                                ));
-                            }
-                            if ui.button("+7d").clicked() {
-                                log_err!(update_time(
-                                    jwt_claims,
-                                    field,
-                                    Plus(Duration::from_secs(60 * 60 * 24 * 7)),
-                                ));
-                            }
-                            if ui.button("+365d").clicked() {
-                                log_err!(update_time(
-                                    jwt_claims,
-                                    field,
-                                    Plus(Duration::from_secs(
-                                        60 * 60 * 24 * 365
-                                    )),
-                                ));
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            ui.label("Signature type: ");
-                            egui::ComboBox::from_label("")
-                                .selected_text(format!("{}", signature_type))
-                                .show_ui(ui, |ui| {
-                                    for sig in SignatureTypes::iter() {
-                                        ui.selectable_value(
-                                            signature_type,
-                                            sig,
-                                            format!("{}", sig),
-                                        );
-                                    }
-                                });
-                            if ui.button("Update header").clicked() {
-                                log_err!(update_alg(
-                                    jwt_header,
-                                    *signature_type
-                                ));
-                            }
-                        });
-                        ui.horizontal(|ui| {
-                            if ui.button("Encode and sign").clicked() {
-                                debug!("Encode and sign JWT");
-                                match encoder::encode_and_sign(
-                                    jwt_header,
-                                    jwt_claims,
-                                    secret,
-                                    *signature_type,
-                                ) {
-                                    Ok(token) => {
-                                        debug!("Encode & sign successful");
-                                        attacks.push(Attack {
-                                            name: secret.clone(),
-                                            token,
-                                        });
-                                    }
-                                    Err(e) => {
-                                        warn!("Error signing token: {}", e);
-                                    }
-                                }
-                            }
-                        });
+                        gui::controls::secret(ui, secret);
+                        gui::controls::attacks(ui, attacks, jwt_claims);
+                        gui::controls::iat_and_exp_time(ui, jwt_claims);
+                        gui::controls::signature_type(
+                            ui,
+                            signature_type,
+                            jwt_header,
+                        );
+                        gui::controls::encode_and_sign(
+                            ui,
+                            jwt_header,
+                            jwt_claims,
+                            secret,
+                            *signature_type,
+                            attacks,
+                        );
                     });
-                }); // controls
+                });
             });
 
+            // Lower half of window with attack and log lists
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
                     ui.group(|ui| {
                         ui.set_max_width(half_width);
                         ui.set_min_height(half_height);
-                        ui.horizontal(|ui| {
-                            ui.label("Generated attack payloads:");
-                            let clear_button = Button::new("Clear")
-                                .fill(Color32::from_rgb(0xa0, 0, 0))
-                                .text_color(Color32::WHITE);
-                            if ui.add(clear_button).clicked() {
-                                info!("Deleted {} attacks", attacks.len());
-                                attacks.clear();
-                            }
-                        });
-
-                        ui.add_space(4.0);
-
-                        let row_height = ui.spacing().interact_size.y;
-                        let num_rows = attacks.len();
-
-                        ScrollArea::vertical().id_source("attacks").show_rows(
-                            ui,
-                            row_height,
-                            num_rows,
-                            |ui, row_range| {
-                                const DELETE_TOKEN_MAGIC_VALUE: &str =
-                                    "MARKED_FOR_DELETION";
-                                for atk in attacks
-                                    .get_mut(row_range)
-                                    .unwrap_or_default()
-                                {
-                                    ui.horizontal(|ui| {
-                                        let copy_button = Button::new("Copy")
-                                            .fill(Color32::from_rgb(0, 0, 0xc0))
-                                            .text_color(Color32::WHITE);
-                                        if ui.add(copy_button).clicked() {
-                                            clipboard.put(&atk.token);
-                                        }
-                                        let delete_button =
-                                            Button::new("Delete")
-                                                .fill(Color32::from_rgb(
-                                                    0xa0, 0, 0,
-                                                ))
-                                                .text_color(Color32::WHITE);
-                                        if ui.add(delete_button).clicked() {
-                                            atk.token =
-                                                DELETE_TOKEN_MAGIC_VALUE
-                                                    .to_string();
-                                        }
-                                        ui.label(format!("{}: ", atk.name));
-                                        ui.add_sized(
-                                            ui.available_size(),
-                                            egui::TextEdit::singleline(
-                                                &mut atk.token,
-                                            )
-                                            .text_style(TextStyle::Monospace),
-                                        );
-                                    });
-                                }
-                                attacks.retain(|atk| {
-                                    atk.token != DELETE_TOKEN_MAGIC_VALUE
-                                });
-                            },
-                        );
+                        gui::attack_list(ui, attacks, clipboard);
                     });
                 });
                 ui.vertical(|ui| {
                     ui.group(|ui| {
                         ui.set_min_height(half_height);
-                        ui.horizontal(|ui| {
-                            ui.label("Log");
-                            let clear_button = Button::new("Clear")
-                                .fill(Color32::from_rgb(0xa0, 0, 0))
-                                .text_color(Color32::WHITE);
-                            if ui.add(clear_button).clicked() {
-                                LOG.clear();
-                            }
-                        });
-                        ui.add_space(4.0);
-
-                        let text_style = TextStyle::Body;
-                        let row_height = ui.fonts()[text_style].row_height();
-                        let num_rows = LOG.len();
-
-                        ScrollArea::vertical().id_source("logs").show_rows(
-                            ui,
-                            row_height,
-                            num_rows,
-                            |ui, row_range| {
-                                for row in LOG
-                                    .inner
-                                    .read()
-                                    .unwrap()
-                                    .get(row_range)
-                                    .unwrap_or_default()
-                                {
-                                    ui.label(row);
-                                }
-                            },
-                        );
+                        gui::log_list(ui);
                     });
                 });
-            }) // the bottom horizontal()
+            });
         });
 
         *win_size = ctx.available_rect().max;
