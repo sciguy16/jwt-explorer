@@ -27,7 +27,7 @@ strum_macros = "0.22"
 
 [dependencies.eframe]
 git = "https://github.com/emilk/egui"
-rev = "cf273e3"
+rev = "19766bf"
 
 [build-dependencies]
 chrono = "0.4"
