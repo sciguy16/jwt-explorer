@@ -26,11 +26,16 @@ Or download the latest release for your platform from [the releases page](https:
 
 ## Attacks
 <dl>
-	<dt>`alg:none`</dt>
+	<dt>alg:none</dt>
 	<dd>
 		"Sign" the JWT with an empty signature and set the algorithm type to "None".
 		Accepted by some implementations which trust the JWT's choice of signature algorithm.
 		Some parsers check for "none" but don't check for e.g. "nOnE".
+	</dd>
+	<dt>Guess common secrets</dt>
+	<dd>
+		If the token has been signed with an HMAC then try a few common secrets.
+		This is not a substitute for passing the token to Hashcat, but can get some easy wins.
 	</dd>
 </dl>
 
