@@ -110,7 +110,7 @@ mod test {
         );
 
         let encoded =
-            encode_and_sign(header, claims, secret, SignatureTypes::Auto)
+            encode_and_sign(header, claims, secret, "", SignatureTypes::Auto)
                 .unwrap();
         assert_eq!(encoded, target);
     }
