@@ -101,6 +101,7 @@ struct AppState {
     jwt_input: String,
     jwt_header: String,
     jwt_claims: String,
+    original_signature: String,
     secret: String,
     signature_type: SignatureTypes,
     attacks: Vec<Attack>,
@@ -185,6 +186,7 @@ impl epi::App for AppState {
             jwt_input,
             jwt_header,
             jwt_claims,
+            original_signature,
             secret,
             signature_type,
             attacks,
@@ -194,7 +196,14 @@ impl epi::App for AppState {
 
         egui::CentralPanel::default().show(ctx, |ui| {
             gui::header(ui);
-            gui::jwt_entry(ui, jwt_input, secret, jwt_header, jwt_claims);
+            gui::jwt_entry(
+                ui,
+                jwt_input,
+                secret,
+                jwt_header,
+                jwt_claims,
+                original_signature,
+            );
 
             let half_width = ui.available_width() / 2.0;
             let half_height = win_size.y / 2.5;
@@ -223,6 +232,7 @@ impl epi::App for AppState {
                             ui,
                             jwt_header,
                             jwt_claims,
+                            original_signature,
                             secret,
                             *signature_type,
                             attacks,

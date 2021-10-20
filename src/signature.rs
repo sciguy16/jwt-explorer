@@ -12,6 +12,8 @@ use crate::JwtHeader;
 pub enum SignatureTypes {
     /// Detect from header
     Auto,
+    /// Retain original signature
+    Retain,
     /// No digital signature or MAC performed
     None,
     /// HMAC using SHA-256
@@ -80,11 +82,13 @@ impl SignatureTypes {
 pub fn calc_signature(
     payload: &str,
     secret: &str,
+    original_signature: &str,
     hash_type: SignatureTypes,
 ) -> Result<String> {
     use SignatureTypes::*;
 
     match hash_type {
+        Retain => Ok(original_signature.to_string()),
         Hs256 => {
             // HMAC using SHA-256
             let mut mac = Hmac::<Sha256>::new_from_slice(secret.as_bytes())
@@ -134,7 +138,7 @@ mod test {
         let secret = "password";
 
         let signature =
-            calc_signature(payload, secret, SignatureTypes::Hs256).unwrap();
+            calc_signature(payload, secret, "", SignatureTypes::Hs256).unwrap();
 
         assert_eq!(signature, "jW6hG22ajnhgpvKKvkWUVI8CYobL7DOdmp6KlGYAfZ8");
     }
@@ -148,7 +152,7 @@ mod test {
         let secret = "password";
 
         let signature =
-            calc_signature(payload, secret, SignatureTypes::Hs384).unwrap();
+            calc_signature(payload, secret, "", SignatureTypes::Hs384).unwrap();
 
         assert_eq!(
             signature,
@@ -165,7 +169,7 @@ mod test {
         let secret = "password";
 
         let signature =
-            calc_signature(payload, secret, SignatureTypes::Hs512).unwrap();
+            calc_signature(payload, secret, "", SignatureTypes::Hs512).unwrap();
 
         assert_eq!(
             signature,

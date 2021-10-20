@@ -31,6 +31,7 @@ pub fn encode_and_sign(
     header: &str,
     claims: &str,
     secret: &str,
+    original_signature: &str,
     mut hash_type: SignatureTypes,
 ) -> Result<String> {
     // If hash type is auto then try to parse the header and pick the
@@ -43,8 +44,12 @@ pub fn encode_and_sign(
             })?;
     }
     let payload = encode_payload(header, claims);
-    let signature =
-        crate::signature::calc_signature(&payload, secret, hash_type)?;
+    let signature = crate::signature::calc_signature(
+        &payload,
+        secret,
+        original_signature,
+        hash_type,
+    )?;
 
     Ok(format!("{}.{}", payload, signature))
 }

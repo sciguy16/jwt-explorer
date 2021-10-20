@@ -20,6 +20,7 @@ pub fn jwt_entry(
     secret: &mut String,
     jwt_header: &mut String,
     jwt_claims: &mut String,
+    original_signature: &mut String,
 ) {
     ui.horizontal(|ui| {
         ui.label("JWT: ");
@@ -33,6 +34,7 @@ pub fn jwt_entry(
             let decoded = crate::decoder::decode_jwt(jwt_input, secret);
             *jwt_header = decoded.header;
             *jwt_claims = decoded.claims;
+            *original_signature = decoded.signature;
             if decoded.signature_valid {
                 info!("Valid signature!");
             } else {

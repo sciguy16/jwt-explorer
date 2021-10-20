@@ -22,6 +22,7 @@ Or download the latest release for your platform from [the releases page](https:
 * Easily update `iat` and `exp` with various offsets
 * Sign and encode tokens with common algorithms
 * Accept and encode invalid JSON payloads
+* Alter the claims while retaining the original signature
 
 ## License
 

@@ -125,6 +125,7 @@ pub fn encode_and_sign(
     ui: &mut Ui,
     jwt_header: &str,
     jwt_claims: &str,
+    original_signature: &str,
     secret: &str,
     signature_type: SignatureTypes,
     attacks: &mut Vec<Attack>,
@@ -136,6 +137,7 @@ pub fn encode_and_sign(
                 jwt_header,
                 jwt_claims,
                 secret,
+                original_signature,
                 signature_type,
             ) {
                 Ok(token) => {

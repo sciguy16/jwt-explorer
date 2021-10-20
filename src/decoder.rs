@@ -9,6 +9,7 @@ use base64::URL_SAFE_NO_PAD;
 pub struct Jwt {
     pub header: String,
     pub claims: String,
+    pub signature: String,
     pub signature_valid: bool,
 }
 
@@ -25,6 +26,7 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str) -> Jwt {
     let claims = parts.next().unwrap_or_default();
     let signature = parts.next().unwrap_or_default();
     let signing_payload = format!("{}.{}", header, claims);
+    jwt.signature = signature.to_string();
 
     // Verify signature if present
     if let Ok(header) = decode_base64(header) {
@@ -39,6 +41,7 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str) -> Jwt {
                     if let Ok(signature_to_compare) = signature::calc_signature(
                         &signing_payload,
                         secret,
+                        "",
                         sig_type,
                     ) {
                         if signature_to_compare == signature {
