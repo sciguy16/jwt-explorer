@@ -24,6 +24,16 @@ Or download the latest release for your platform from [the releases page](https:
 * Accept and encode invalid JSON payloads
 * Alter the claims while retaining the original signature
 
+## Attacks
+<dl>
+	<dt>`alg:none`</dt>
+	<dd>
+		"Sign" the JWT with an empty signature and set the algorithm type to "None".
+		Accepted by some implementations which trust the JWT's choice of signature algorithm.
+		Some parsers check for "none" but don't check for e.g. "nOnE".
+	</dd>
+</dl>
+
 ## License
 
 JWT Explorer is available under the terms of either the MIT license or
