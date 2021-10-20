@@ -85,6 +85,19 @@ pub(crate) fn attack_list(
 ) {
     ui.horizontal(|ui| {
         ui.label("Generated attack payloads:");
+        let copy_button = Button::new("Copy all")
+            .fill(Color32::from_rgb(0, 0, 0xc0))
+            .text_color(Color32::WHITE);
+        if ui.add(copy_button).clicked() {
+            let cap: usize = attacks.iter().map(|a| a.token.len()).sum();
+            let mut tokenlist = String::with_capacity(cap + attacks.len());
+            for atk in attacks.iter() {
+                tokenlist.push_str(&atk.token);
+                tokenlist.push('\n');
+            }
+
+            clipboard.put(&tokenlist);
+        }
         let clear_button = Button::new("Clear")
             .fill(Color32::from_rgb(0xa0, 0, 0))
             .text_color(Color32::WHITE);
