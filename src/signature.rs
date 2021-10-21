@@ -42,6 +42,12 @@ pub enum SignatureTypes {
     Ps512,*/
 }
 
+pub enum SignatureClass {
+    Other,
+    Pubkey,
+    Hmac,
+}
+
 impl Default for SignatureTypes {
     fn default() -> Self {
         SignatureTypes::Auto
@@ -75,6 +81,28 @@ impl SignatureTypes {
             None
         } else {
             Some(ret)
+        }
+    }
+
+    pub fn class(&self, jwt_header: &str) -> SignatureClass {
+        use SignatureClass::*;
+        use SignatureTypes::*;
+        match self {
+            None => Other,
+            Hs256 | Hs384 | Hs512 => Hmac,
+            Auto | Retain => {
+                if jwt_header.contains("HS") || jwt_header.contains("hs") {
+                    return Hmac;
+                }
+                if jwt_header.contains("RS")
+                    || jwt_header.contains("rs")
+                    || jwt_header.contains("ES")
+                    || jwt_header.contains("es")
+                {
+                    return Pubkey;
+                }
+                Other
+            }
         }
     }
 }

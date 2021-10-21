@@ -27,7 +27,7 @@ mod json_formatter;
 mod signature;
 
 use attack::Attack;
-use signature::SignatureTypes;
+use signature::{SignatureClass, SignatureTypes};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 lazy_static! {
@@ -96,13 +96,16 @@ pub struct JwtHeader {
     typ: Option<String>,
 }
 
-#[derive(Clone, Default)]
+#[derive(Default)]
 struct AppState {
     jwt_input: String,
     jwt_header: String,
     jwt_claims: String,
     original_signature: String,
     secret: String,
+    pubkey: String,
+    privkey: String,
+    keypair_display_state: gui::controls::KeyPairDisplayState,
     signature_type: SignatureTypes,
     attacks: Vec<Attack>,
     win_size: Pos2,
@@ -188,6 +191,9 @@ impl epi::App for AppState {
             jwt_claims,
             original_signature,
             secret,
+            pubkey,
+            privkey,
+            keypair_display_state,
             signature_type,
             attacks,
             win_size,
@@ -220,7 +226,19 @@ impl epi::App for AppState {
                 ui.vertical(|ui| {
                     ui.group(|ui| {
                         // Controls
-                        gui::controls::secret(ui, secret);
+                        match signature_type.class(jwt_header) {
+                            SignatureClass::Hmac => {
+                                gui::controls::secret(ui, secret)
+                            }
+                            SignatureClass::Pubkey => gui::controls::keypair(
+                                ui,
+                                keypair_display_state,
+                                pubkey,
+                                privkey,
+                            ),
+                            _ => (),
+                        }
+
                         gui::controls::attacks(ui, attacks, jwt_claims);
                         gui::controls::iat_and_exp_time(ui, jwt_claims);
                         gui::controls::signature_type(

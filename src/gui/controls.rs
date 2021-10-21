@@ -14,6 +14,50 @@ pub fn secret(ui: &mut Ui, secret: &mut String) {
     });
 }
 
+#[derive(Debug, Default)]
+pub(crate) struct KeyPairDisplayState {
+    pubkey_focused: bool,
+    privkey_focused: bool,
+}
+
+pub(crate) fn keypair(
+    ui: &mut Ui,
+    state: &mut KeyPairDisplayState,
+    pubkey: &mut String,
+    privkey: &mut String,
+) {
+    ui.horizontal(|ui| {
+        ui.label("Public: ");
+        let inp = if !state.pubkey_focused {
+            TextEdit::singleline(pubkey)
+        } else {
+            TextEdit::multiline(pubkey)
+        };
+        let inp_state = ui.add(inp);
+        if inp_state.gained_focus() {
+            state.pubkey_focused = true;
+        }
+        if inp_state.lost_focus() {
+            state.pubkey_focused = false;
+        }
+    });
+    ui.horizontal(|ui| {
+        ui.label("Private: ");
+        let inp = if !state.privkey_focused {
+            TextEdit::singleline(privkey)
+        } else {
+            TextEdit::multiline(privkey)
+        };
+        let inp_state = ui.add(inp);
+        if inp_state.gained_focus() {
+            state.privkey_focused = true;
+        }
+        if inp_state.lost_focus() {
+            state.privkey_focused = false;
+        }
+    });
+}
+
 pub fn attacks(ui: &mut Ui, attacks: &mut Vec<Attack>, jwt_claims: &str) {
     use crate::attack;
     ui.horizontal(|ui| {
