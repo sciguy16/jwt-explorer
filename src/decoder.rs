@@ -1,6 +1,6 @@
 //use jwt::VerifyWithKey;
 use crate::{
-    signature::{self, SignatureTypes},
+    signature::{self, SignatureClass, SignatureTypes},
     JwtHeader,
 };
 use base64::URL_SAFE_NO_PAD;
@@ -13,7 +13,7 @@ pub struct Jwt {
     pub signature_valid: bool,
 }
 
-pub(crate) fn decode_jwt(inp: &str, secret: &str) -> Jwt {
+pub(crate) fn decode_jwt(inp: &str, secret: &str, public_key: &str) -> Jwt {
     let mut jwt = Jwt::default();
     if inp.is_empty() {
         warn!("{}", "Empty input");
@@ -37,23 +37,23 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str) -> Jwt {
                 if let Some(sig_type) =
                     SignatureTypes::from_header(&header_decoded)
                 {
+                    let key = match sig_type.class(&header) {
+                        SignatureClass::Hmac => secret,
+                        SignatureClass::Pubkey => public_key,
+                        SignatureClass::Other => "",
+                    };
+
                     // Header decoded successfully
-                    if let Ok(signature_to_compare) = signature::calc_signature(
+                    match signature::verify_signature(
                         &signing_payload,
-                        secret,
-                        "",
+                        signature,
+                        key,
                         sig_type,
                     ) {
-                        if signature_to_compare == signature {
-                            jwt.signature_valid = true;
-                        } else {
-                            jwt.signature_valid = false;
-
-                            debug!(
-                                "Signature mismatch:\ncalc: {}\norig: {}",
-                                signature_to_compare, signature
-                            );
+                        Ok(valid) => {
+                            jwt.signature_valid = valid;
                         }
+                        Err(e) => warn!("Error validating signature: {}", e),
                     }
                 }
             }
@@ -128,7 +128,7 @@ mod test {
         let header = "{\n  \"alg\": \"none\",\n  \"type\": \"JWT\"\n}";
         let claims = "{\n  \"hello\": \"world\"\n}";
 
-        let decoded = decode_jwt(inp, "");
+        let decoded = decode_jwt(inp, "", "");
         assert_eq!(decoded.header, header);
         assert_eq!(decoded.claims, claims);
         assert!(decoded.signature_valid);
@@ -145,7 +145,7 @@ mod test {
         let header = "{\n  \"alg\": \"HS384\",\n  \"type\": \"JWT\"\n}";
         let claims = "{\n  \"hello\": \"world\"\n}";
 
-        let decoded = decode_jwt(inp, "password");
+        let decoded = decode_jwt(inp, "password", "");
         assert_eq!(decoded.header, header);
         assert_eq!(decoded.claims, claims);
         assert!(decoded.signature_valid);
@@ -162,7 +162,7 @@ mod test {
         let header = "{\n  \"alg\": \"HS384\",\n  \"type\": \"JWT\"\n}";
         let claims = "{\n  \"hello\": \"world\"\n}";
 
-        let decoded = decode_jwt(inp, "password");
+        let decoded = decode_jwt(inp, "password", "");
         assert_eq!(decoded.header, header);
         assert_eq!(decoded.claims, claims);
         assert!(!decoded.signature_valid);

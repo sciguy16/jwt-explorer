@@ -115,9 +115,15 @@ mod test {
             "tpOT8CJlT9_BgojqRtFypZt2yIbh0rPzO1hGlUloe4fVz4wdIq3pdGejx1cY3Yt8"
         );
 
-        let encoded =
-            encode_and_sign(header, claims, secret, "", SignatureTypes::Auto)
-                .unwrap();
+        let encoded = encode_and_sign(
+            header,
+            claims,
+            secret,
+            "",
+            "",
+            SignatureTypes::Auto,
+        )
+        .unwrap();
         assert_eq!(encoded, target);
     }
 }

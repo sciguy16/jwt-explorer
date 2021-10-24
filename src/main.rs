@@ -206,6 +206,8 @@ impl epi::App for AppState {
                 ui,
                 jwt_input,
                 secret,
+                pubkey,
+                privkey,
                 jwt_header,
                 jwt_claims,
                 original_signature,
@@ -336,7 +338,7 @@ mod test {
 
         let jwt_input = JWT_HS384.to_string();
         let secret = "";
-        let decoded = decoder::decode_jwt(&jwt_input, secret);
+        let decoded = decoder::decode_jwt(&jwt_input, secret, "");
         assert_eq!(decoded.header, JWT_HS384_DECODED.0);
         assert_eq!(decoded.claims, JWT_HS384_DECODED.1);
     }

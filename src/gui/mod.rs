@@ -17,7 +17,9 @@ pub fn header(ui: &mut Ui) {
 pub fn jwt_entry(
     ui: &mut Ui,
     jwt_input: &mut String,
-    secret: &mut String,
+    secret: &mut String, // needs &mut for secret guessing attack
+    public_key: &mut String, // needs mut for demo mode
+    private_key: &mut String, // needs mut for demo mode
     jwt_header: &mut String,
     jwt_claims: &mut String,
     original_signature: &mut String,
@@ -31,7 +33,8 @@ pub fn jwt_entry(
             if secret.is_empty() {
                 crate::attack::try_some_common_secrets(jwt_input, secret);
             }
-            let decoded = crate::decoder::decode_jwt(jwt_input, secret);
+            let decoded =
+                crate::decoder::decode_jwt(jwt_input, secret, public_key);
             *jwt_header = decoded.header;
             *jwt_claims = decoded.claims;
             *original_signature = decoded.signature;
@@ -53,6 +56,17 @@ pub fn jwt_entry(
                 "4ZE1TbfJNpZluGDVH6CBtM9DXx6ZDmWwIk7bPxa2ZNY"
             )
             .to_string();
+            *public_key = r#"-----BEGIN PUBLIC KEY-----
+MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEEVs/o5+uQbTjL3chynL4wXgUg2R9
+q9UU8I5mEovUf86QZ7kOBIjJwqnzD1omageEHWwHdBO6B+dFabmdT9POxg==
+-----END PUBLIC KEY-----"#
+                .to_string();
+            *private_key = r#"-----BEGIN PRIVATE KEY-----
+MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgevZzL1gdAFr88hb2
+OF/2NxApJCzGCEDdfSp6VQO30hyhRANCAAQRWz+jn65BtOMvdyHKcvjBeBSDZH2r
+1RTwjmYSi9R/zpBnuQ4EiMnCqfMPWiZqB4QdbAd0E7oH50VpuZ1P087G
+-----END PRIVATE KEY-----"#
+                .to_string();
         }
     });
 }

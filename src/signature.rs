@@ -180,6 +180,10 @@ pub fn verify_signature(
     use SignatureTypes::*;
     const BN_LEN: usize = 32;
     match hash_type {
+        Hs256 | Hs384 | Hs512 => {
+            let calculated = calc_signature(payload, key, "", hash_type)?;
+            Ok(calculated == signature)
+        }
         Es256 => {
             // ECDSA-256
 
@@ -229,6 +233,15 @@ mod test {
             calc_signature(payload, secret, "", SignatureTypes::Hs256).unwrap();
 
         assert_eq!(signature, "jW6hG22ajnhgpvKKvkWUVI8CYobL7DOdmp6KlGYAfZ8");
+
+        let valid = verify_signature(
+            payload,
+            &signature,
+            secret,
+            SignatureTypes::Hs256,
+        )
+        .unwrap();
+        assert!(valid);
     }
 
     #[test]
@@ -246,6 +259,15 @@ mod test {
             signature,
             "atUQ3QNbGaBYU27YAs-Bc9nmkGyUDqb8PM_Qg8THWWcaaIU9S5U8WlvDe6restjn"
         );
+
+        let valid = verify_signature(
+            payload,
+            &signature,
+            secret,
+            SignatureTypes::Hs384,
+        )
+        .unwrap();
+        assert!(valid);
     }
 
     #[test]
@@ -266,6 +288,15 @@ mod test {
                 "OFoXJZixJxmCDKGF_A8UgaObbw4biMgEeiEzZQ"
             )
         );
+
+        let valid = verify_signature(
+            payload,
+            &signature,
+            secret,
+            SignatureTypes::Hs512,
+        )
+        .unwrap();
+        assert!(valid);
     }
 
     /// To validate the signature calculation we have to do a proper
