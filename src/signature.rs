@@ -164,7 +164,7 @@ pub fn calc_signature(
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
         }
         Es256 => {
-            // ECDSA-256
+            // ECDSA using P-256 and SHA-256
             //TODO factor out repeated code between Es* signatures
             let mut hasher = Sha256::new();
             hasher.update(payload.as_bytes());
@@ -180,7 +180,7 @@ pub fn calc_signature(
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
         }
         Es384 => {
-            // ECDSA-384
+            // ECDSA using P-384 and SHA-384
             let mut hasher = Sha384::new();
             hasher.update(payload.as_bytes());
             let payload = hasher.finalize();
@@ -190,6 +190,24 @@ pub fn calc_signature(
             let mut signature_bytes = signature.r().to_vec();
             debug!("r len: {}", signature_bytes.len());
             signature_bytes.extend_from_slice(&signature.s().to_vec());
+            debug!("total len: {}", signature_bytes.len());
+
+            Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
+        }
+        Es512 => {
+            // ECDSA using P-521 and SHA-512
+            let mut hasher = Sha512::new();
+            hasher.update(payload.as_bytes());
+            let payload = hasher.finalize();
+            debug!("SHA512: {:02x?}", payload);
+            let secret_key = EcKey::private_key_from_pem(secret.as_bytes())?;
+            let signature = EcdsaSig::sign(&payload, &secret_key)?;
+            let mut signature_bytes = signature.r().to_vec();
+            signature_bytes.pad_to(0, 66);
+            debug!("r len: {}", signature_bytes.len());
+            let mut s_padded = signature.s().to_vec();
+            s_padded.pad_to(0, 66);
+            signature_bytes.extend_from_slice(&s_padded);
             debug!("total len: {}", signature_bytes.len());
 
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
@@ -270,6 +288,32 @@ pub fn verify_signature(
 
             Ok(sig.verify(&payload, &pubkey)?)
         }
+        Es512 => {
+            // ECDSA-512
+
+            // Load the pubkey
+            let pubkey = EcKey::public_key_from_pem(key.as_bytes())?;
+
+            // Load the r and s components from the JWT signature
+            debug!("signature:\n{}", signature);
+            let sig_bytes = base64::decode_config(signature, URL_SAFE_NO_PAD)?;
+
+            let halfway = (sig_bytes.len() as f32) / 2.0;
+            let halfway = halfway.round() as usize;
+
+            let (r, s) = sig_bytes.split_at(halfway);
+            let r = BigNum::from_slice(r)?;
+            let s = BigNum::from_slice(s)?;
+            let sig = EcdsaSig::from_private_components(r, s)?;
+
+            // Hash the payload
+            let mut hasher = Sha512::new();
+            hasher.update(payload.as_bytes());
+            let payload = hasher.finalize();
+            debug!("SHA512: {:02x?}", payload);
+
+            Ok(sig.verify(&payload, &pubkey)?)
+        }
         None => Ok(true),
         _ => bail!("Unrecognised signature type: {}", hash_type),
     }
@@ -302,6 +346,21 @@ pub fn generate_keypair(signature_type: SignatureTypes) -> Result<KeyPair> {
     }
 }
 
+trait VecPadding<T: Copy> {
+    fn pad_to(&mut self, value: T, len: usize);
+}
+
+impl<T> VecPadding<T> for Vec<T>
+where
+    T: Copy,
+{
+    fn pad_to(&mut self, value: T, len: usize) {
+        while self.len() < len {
+            self.insert(0, value);
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -319,6 +378,23 @@ mod test {
             assert!(kp.public.contains("BEGIN PUBLIC KEY"));
             assert!(kp.private.contains("BEGIN EC PRIVATE KEY"));
         }
+    }
+
+    #[test]
+    fn vec_padding() {
+        init();
+
+        let data = &[1u8, 2, 3, 4, 5, 6, 7, 8, 9];
+        let mut a_vec = Vec::new();
+        a_vec.extend_from_slice(data);
+
+        assert_eq!(data.len(), 9);
+
+        a_vec.pad_to(0xff, 15);
+
+        assert_eq!(a_vec.len(), 15);
+        assert_eq!(a_vec[..6], [0xffu8, 0xff, 0xff, 0xff, 0xff, 0xff][..]);
+        assert_eq!(a_vec[6..], data[..]);
     }
 
     #[test]
@@ -474,5 +550,59 @@ MIPAxMtZXkEWbDF0zo9f2n4+T1h/2sh/fviblc/VTyrv10GEtIi5qiOy85Pf1RRw
         )
         .unwrap();
         assert!(valid);
+    }
+
+    #[test]
+    fn es512() {
+        init();
+
+        let pubkey = r#"-----BEGIN PUBLIC KEY-----
+MIGbMBAGByqGSM49AgEGBSuBBAAjA4GGAAQBgc4HZz+/fBbC7lmEww0AO3NK9wVZ
+PDZ0VEnsaUFLEYpTzb90nITtJUcPUbvOsdZIZ1Q8fnbquAYgxXL5UgHMoywAib47
+6MkyyYgPk0BXZq3mq4zImTRNuaU9slj9TVJ3ScT3L1bXwVuPJDzpr5GOFpaj+WwM
+Al8G7CqwoJOsW7Kddns=
+-----END PUBLIC KEY-----"#;
+        let privkey = r#"-----BEGIN PRIVATE KEY-----
+MIHuAgEAMBAGByqGSM49AgEGBSuBBAAjBIHWMIHTAgEBBEIBiyAa7aRHFDCh2qga
+9sTUGINE5jHAFnmM8xWeT/uni5I4tNqhV5Xx0pDrmCV9mbroFtfEa0XVfKuMAxxf
+Z6LM/yKhgYkDgYYABAGBzgdnP798FsLuWYTDDQA7c0r3BVk8NnRUSexpQUsRilPN
+v3SchO0lRw9Ru86x1khnVDx+duq4BiDFcvlSAcyjLACJvjvoyTLJiA+TQFdmrear
+jMiZNE25pT2yWP1NUndJxPcvVtfBW48kPOmvkY4WlqP5bAwCXwbsKrCgk6xbsp12
+ew==
+-----END PRIVATE KEY-----"#;
+
+        let payload = concat!(
+            "eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.",
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYW",
+            "RtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0"
+        );
+
+        let signature =
+            calc_signature(payload, privkey, "", SignatureTypes::Es512)
+                .unwrap();
+
+        let valid = verify_signature(
+            payload,
+            &signature,
+            pubkey,
+            SignatureTypes::Es512,
+        )
+        .unwrap();
+        assert!(valid);
+    }
+
+    /// Run ES512 a bunch of times to make sure that the vec padding
+    /// change has actually fixed the problem
+    ///
+    /// Run with cargo test -- --ignored
+    #[test]
+    #[ignore]
+    fn repeat_es512() {
+        init();
+        const REPEAT_TIMES: usize = 1000;
+
+        for _ in 0..REPEAT_TIMES {
+            es512();
+        }
     }
 }
