@@ -14,6 +14,7 @@ pub fn header(ui: &mut Ui) {
     ui.label("Hint: pop the JWT into Hashcat to check for weak keys");
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn jwt_entry(
     ui: &mut Ui,
     jwt_input: &mut String,

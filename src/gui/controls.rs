@@ -165,6 +165,7 @@ pub fn signature_type(
     });
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn encode_and_sign(
     ui: &mut Ui,
     jwt_header: &str,
@@ -200,7 +201,7 @@ pub fn encode_and_sign(
             }
         }
 
-        if let SignatureClass::Pubkey = signature_type.class(&jwt_header) {
+        if let SignatureClass::Pubkey = signature_type.class(jwt_header) {
             // Only display keygen button if it's relevant
             if ui.button("Generate keypair").clicked() {
                 match generate_keypair(signature_type) {
