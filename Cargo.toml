@@ -15,7 +15,7 @@ anyhow = "1.0"
 base64 = "0.13"
 copypasta = "0.7"
 crypto-hashes = "0.9"
-#eframe = "0.14"
+eframe = "0.15"
 hmac = "0.11"
 lazy_static = "1.4"
 log = "0.4"
@@ -25,10 +25,6 @@ serde_json = "1.0"
 simplelog = { version = "0.10", features = ["test"] }
 strum = { version = "0.22", features = ["derive"] }
 strum_macros = "0.22"
-
-[dependencies.eframe]
-git = "https://github.com/emilk/egui"
-rev = "19766bf"
 
 [build-dependencies]
 chrono = "0.4"
