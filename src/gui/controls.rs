@@ -5,7 +5,7 @@ use strum::IntoEnumIterator;
 use crate::attack::Attack;
 use crate::json_editor::{update_alg, update_time, TimeOffset};
 use crate::log_err;
-use crate::signature::SignatureTypes;
+use crate::signature::{generate_keypair, SignatureClass, SignatureTypes};
 
 pub fn secret(ui: &mut Ui, secret: &mut String) {
     ui.horizontal(|ui| {
@@ -171,7 +171,8 @@ pub fn encode_and_sign(
     jwt_claims: &str,
     original_signature: &str,
     secret: &str,
-    private_key: &str,
+    public_key: &mut String,
+    private_key: &mut String,
     signature_type: SignatureTypes,
     attacks: &mut Vec<Attack>,
 ) {
@@ -195,6 +196,20 @@ pub fn encode_and_sign(
                 }
                 Err(e) => {
                     warn!("Error signing token: {}", e);
+                }
+            }
+        }
+
+        if let SignatureClass::Pubkey = signature_type.class(&jwt_header) {
+            // Only display keygen button if it's relevant
+            if ui.button("Generate keypair").clicked() {
+                match generate_keypair(signature_type) {
+                    Ok(kp) => {
+                        *private_key = kp.private;
+                        *public_key = kp.public;
+                        info!("Generated fresh keypair");
+                    }
+                    Err(e) => warn!("Error generating keypair: {}", e),
                 }
             }
         }

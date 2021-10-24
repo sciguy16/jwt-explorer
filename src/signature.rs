@@ -3,8 +3,9 @@ use base64::URL_SAFE_NO_PAD;
 use crypto_hashes::sha2::{Digest, Sha256, Sha384, Sha512};
 use hmac::{Hmac, Mac, NewMac};
 use openssl::bn::BigNum;
-use openssl::ec::EcKey;
+use openssl::ec::{EcGroup, EcKey};
 use openssl::ecdsa::EcdsaSig;
+use openssl::nid::Nid;
 use std::fmt::{self, Display};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -212,7 +213,32 @@ pub fn verify_signature(
             Ok(sig.verify(&payload, &pubkey)?)
         }
         None => Ok(true),
-        _ => Err(anyhow!("Unrecognised signature type: {}", hash_type)),
+        _ => bail!("Unrecognised signature type: {}", hash_type),
+    }
+}
+
+#[derive(Debug)]
+pub struct KeyPair {
+    pub public: String,
+    pub private: String,
+}
+
+pub fn generate_keypair(signature_type: SignatureTypes) -> Result<KeyPair> {
+    use SignatureTypes::*;
+
+    match signature_type {
+        Es256 => {
+            let group = EcGroup::from_curve_name(Nid::SECP256K1)?;
+            let kp = EcKey::generate(&group)?;
+            Ok(KeyPair {
+                public: String::from_utf8(kp.public_key_to_pem()?)?,
+                private: String::from_utf8(kp.private_key_to_pem()?)?,
+            })
+        }
+        _ => bail!(
+            "Cannot create keypair for signature type `{}`",
+            signature_type
+        ),
     }
 }
 
@@ -220,6 +246,20 @@ pub fn verify_signature(
 mod test {
     use super::*;
     use crate::test::init;
+
+    #[test]
+    fn generate_keys() {
+        use SignatureTypes::*;
+        init();
+
+        for sig_type in &[Es256] {
+            debug!("Signature type: {}", sig_type);
+            let kp = generate_keypair(*sig_type).unwrap();
+            debug!("Generated keypair:\n{:?}", kp);
+            assert!(kp.public.contains("BEGIN PUBLIC KEY"));
+            assert!(kp.private.contains("BEGIN EC PRIVATE KEY"));
+        }
+    }
 
     #[test]
     fn hs256() {
