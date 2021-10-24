@@ -171,6 +171,7 @@ pub fn encode_and_sign(
     jwt_claims: &str,
     original_signature: &str,
     secret: &str,
+    private_key: &str,
     signature_type: SignatureTypes,
     attacks: &mut Vec<Attack>,
 ) {
@@ -181,6 +182,7 @@ pub fn encode_and_sign(
                 jwt_header,
                 jwt_claims,
                 secret,
+                private_key,
                 original_signature,
                 signature_type,
             ) {

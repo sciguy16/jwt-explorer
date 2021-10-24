@@ -1,4 +1,4 @@
-use crate::signature::SignatureTypes;
+use crate::signature::{SignatureClass, SignatureTypes};
 use crate::JwtHeader;
 use anyhow::{anyhow, Result};
 use base64::URL_SAFE_NO_PAD;
@@ -31,6 +31,7 @@ pub fn encode_and_sign(
     header: &str,
     claims: &str,
     secret: &str,
+    private_key: &str,
     original_signature: &str,
     mut hash_type: SignatureTypes,
 ) -> Result<String> {
@@ -43,10 +44,15 @@ pub fn encode_and_sign(
                 anyhow!("Unrecognised signature type `{}`", jwt_header.alg)
             })?;
     }
+    let key = match hash_type.class(header) {
+        SignatureClass::Hmac => secret,
+        SignatureClass::Pubkey => private_key,
+        SignatureClass::Other => "",
+    };
     let payload = encode_payload(header, claims);
     let signature = crate::signature::calc_signature(
         &payload,
-        secret,
+        key,
         original_signature,
         hash_type,
     )?;

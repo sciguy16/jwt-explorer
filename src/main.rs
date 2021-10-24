@@ -252,6 +252,7 @@ impl epi::App for AppState {
                             jwt_claims,
                             original_signature,
                             secret,
+                            privkey,
                             *signature_type,
                             attacks,
                         );
