@@ -207,7 +207,6 @@ impl epi::App for AppState {
                 jwt_input,
                 secret,
                 pubkey,
-                privkey,
                 jwt_header,
                 jwt_claims,
                 original_signature,
