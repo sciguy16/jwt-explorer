@@ -5,7 +5,11 @@ use hmac::{Hmac, Mac, NewMac};
 use openssl::bn::BigNum;
 use openssl::ec::{EcGroup, EcKey};
 use openssl::ecdsa::EcdsaSig;
+use openssl::hash::MessageDigest;
 use openssl::nid::Nid;
+use openssl::pkey::PKey;
+use openssl::rsa::Rsa;
+use openssl::sign::{Signer, Verifier};
 use std::fmt::{self, Display};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
@@ -26,9 +30,9 @@ pub enum SignatureTypes {
     Hs384,
     /// HMAC using SHA-512
     Hs512,
-    /*/// RSASSA-PKCS1-v1_5 using SHA-256
+    /// RSASSA-PKCS1-v1_5 using SHA-256
     Rs256,
-    /// RSASSA-PKCS1-v1_5 using SHA-384
+    /*/// RSASSA-PKCS1-v1_5 using SHA-384
     Rs384,
     /// RSASSA-PKCS1-v1_5 using SHA-512
     Rs512,*/
@@ -94,7 +98,7 @@ impl SignatureTypes {
         match self {
             None => Other,
             Hs256 | Hs384 | Hs512 => Hmac,
-            Es256 | Es384 | Es512 => Pubkey,
+            Es256 | Es384 | Es512 | Rs256 => Pubkey,
             Auto | Retain => {
                 if jwt_header.contains("HS") || jwt_header.contains("hs") {
                     return Hmac;
@@ -212,8 +216,19 @@ pub fn calc_signature(
 
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
         }
+        Rs256 => {
+            // RSASSA-PKCS1-v1_5 using SHA-256
+
+            let secret_key = PKey::private_key_from_pem(secret.as_bytes())?;
+
+            let mut signer = Signer::new(MessageDigest::sha256(), &secret_key)?;
+            signer.update(payload.as_bytes())?;
+            let signature = signer.sign_to_vec()?;
+
+            Ok(base64::encode_config(signature, URL_SAFE_NO_PAD))
+        }
         None => Ok("".to_string()),
-        _ => Err(anyhow!("Unrecognised signature type: {}", hash_type)),
+        _ => bail!("Unrecognised signature type: {}", hash_type),
     }
 }
 
@@ -314,6 +329,17 @@ pub fn verify_signature(
 
             Ok(sig.verify(&payload, &pubkey)?)
         }
+        Rs256 => {
+            // RSASSA-256
+
+            let signature = base64::decode_config(signature, URL_SAFE_NO_PAD)?;
+
+            let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
+
+            let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey)?;
+            verifier.update(payload.as_bytes())?;
+            Ok(verifier.verify(&signature)?)
+        }
         None => Ok(true),
         _ => bail!("Unrecognised signature type: {}", hash_type),
     }
@@ -337,6 +363,13 @@ pub fn generate_keypair(signature_type: SignatureTypes) -> Result<KeyPair> {
             Ok(KeyPair {
                 public: String::from_utf8(kp.public_key_to_pem()?)?,
                 private: String::from_utf8(kp.private_key_to_pem()?)?,
+            })
+        }
+        Rs256 => {
+            let rsa = Rsa::generate(2048)?;
+            Ok(KeyPair {
+                public: String::from_utf8(rsa.public_key_to_pem()?)?,
+                private: String::from_utf8(rsa.private_key_to_pem()?)?,
             })
         }
         _ => bail!(
@@ -377,6 +410,14 @@ mod test {
             debug!("Generated keypair:\n{:?}", kp);
             assert!(kp.public.contains("BEGIN PUBLIC KEY"));
             assert!(kp.private.contains("BEGIN EC PRIVATE KEY"));
+        }
+
+        for sig_type in &[Rs256] {
+            debug!("Signature type: {}", sig_type);
+            let kp = generate_keypair(*sig_type).unwrap();
+            debug!("Generated keypair:\n{:?}", kp);
+            assert!(kp.public.contains("BEGIN PUBLIC KEY"));
+            assert!(kp.private.contains("BEGIN RSA PRIVATE KEY"));
         }
     }
 
@@ -597,12 +638,88 @@ ew==
     /// Run with cargo test -- --ignored
     #[test]
     #[ignore]
-    fn repeat_es512() {
+    fn repeat_ecdsa() {
         init();
         const REPEAT_TIMES: usize = 1000;
 
         for _ in 0..REPEAT_TIMES {
+            es256();
+            es384();
             es512();
         }
+    }
+
+    #[test]
+    fn rs256() {
+        init();
+
+        let pubkey = r#"-----BEGIN PUBLIC KEY-----
+MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo
+4lgOEePzNm0tRgeLezV6ffAt0gunVTLw7onLRnrq0/IzW7yWR7QkrmBL7jTKEn5u
++qKhbwKfBstIs+bMY2Zkp18gnTxKLxoS2tFczGkPLPgizskuemMghRniWaoLcyeh
+kd3qqGElvW/VDL5AaWTg0nLVkjRo9z+40RQzuVaE8AkAFmxZzow3x+VJYKdjykkJ
+0iT9wCS0DRTXu269V264Vf/3jvredZiKRkgwlL9xNAwxXFg0x/XFw005UWVRIkdg
+cKWTjpBP2dPwVZ4WWC+9aGVd+Gyn1o0CLelf4rEjGoXbAAEgAqeGUxrcIlbjXfbc
+mwIDAQAB
+-----END PUBLIC KEY-----"#;
+        let privkey = r#"-----BEGIN PRIVATE KEY-----
+MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC7VJTUt9Us8cKj
+MzEfYyjiWA4R4/M2bS1GB4t7NXp98C3SC6dVMvDuictGeurT8jNbvJZHtCSuYEvu
+NMoSfm76oqFvAp8Gy0iz5sxjZmSnXyCdPEovGhLa0VzMaQ8s+CLOyS56YyCFGeJZ
+qgtzJ6GR3eqoYSW9b9UMvkBpZODSctWSNGj3P7jRFDO5VoTwCQAWbFnOjDfH5Ulg
+p2PKSQnSJP3AJLQNFNe7br1XbrhV//eO+t51mIpGSDCUv3E0DDFcWDTH9cXDTTlR
+ZVEiR2BwpZOOkE/Z0/BVnhZYL71oZV34bKfWjQIt6V/isSMahdsAASACp4ZTGtwi
+VuNd9tybAgMBAAECggEBAKTmjaS6tkK8BlPXClTQ2vpz/N6uxDeS35mXpqasqskV
+laAidgg/sWqpjXDbXr93otIMLlWsM+X0CqMDgSXKejLS2jx4GDjI1ZTXg++0AMJ8
+sJ74pWzVDOfmCEQ/7wXs3+cbnXhKriO8Z036q92Qc1+N87SI38nkGa0ABH9CN83H
+mQqt4fB7UdHzuIRe/me2PGhIq5ZBzj6h3BpoPGzEP+x3l9YmK8t/1cN0pqI+dQwY
+dgfGjackLu/2qH80MCF7IyQaseZUOJyKrCLtSD/Iixv/hzDEUPfOCjFDgTpzf3cw
+ta8+oE4wHCo1iI1/4TlPkwmXx4qSXtmw4aQPz7IDQvECgYEA8KNThCO2gsC2I9PQ
+DM/8Cw0O983WCDY+oi+7JPiNAJwv5DYBqEZB1QYdj06YD16XlC/HAZMsMku1na2T
+N0driwenQQWzoev3g2S7gRDoS/FCJSI3jJ+kjgtaA7Qmzlgk1TxODN+G1H91HW7t
+0l7VnL27IWyYo2qRRK3jzxqUiPUCgYEAx0oQs2reBQGMVZnApD1jeq7n4MvNLcPv
+t8b/eU9iUv6Y4Mj0Suo/AU8lYZXm8ubbqAlwz2VSVunD2tOplHyMUrtCtObAfVDU
+AhCndKaA9gApgfb3xw1IKbuQ1u4IF1FJl3VtumfQn//LiH1B3rXhcdyo3/vIttEk
+48RakUKClU8CgYEAzV7W3COOlDDcQd935DdtKBFRAPRPAlspQUnzMi5eSHMD/ISL
+DY5IiQHbIH83D4bvXq0X7qQoSBSNP7Dvv3HYuqMhf0DaegrlBuJllFVVq9qPVRnK
+xt1Il2HgxOBvbhOT+9in1BzA+YJ99UzC85O0Qz06A+CmtHEy4aZ2kj5hHjECgYEA
+mNS4+A8Fkss8Js1RieK2LniBxMgmYml3pfVLKGnzmng7H2+cwPLhPIzIuwytXywh
+2bzbsYEfYx3EoEVgMEpPhoarQnYPukrJO4gwE2o5Te6T5mJSZGlQJQj9q4ZB2Dfz
+et6INsK0oG8XVGXSpQvQh3RUYekCZQkBBFcpqWpbIEsCgYAnM3DQf3FJoSnXaMhr
+VBIovic5l0xFkEHskAjFTevO86Fsz1C2aSeRKSqGFoOQ0tmJzBEs1R6KqnHInicD
+TQrKhArgLXX4v3CddjfTRJkFWDbE/CkvKZNOrcf1nhaGCPspRJj2KUkj1Fhl9Cnc
+dn/RsYEONbwQSjIfMPkvxF+8HQ==
+-----END PRIVATE KEY-----"#;
+
+        let payload = concat!(
+            "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.",
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYW",
+            "RtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0"
+        );
+
+        let expected = concat!(
+            "NHVaYe26MbtOYhSKkoKYdFVomg4i8ZJd8_-RU8VNbftc4TSMb",
+            "4bXP3l3YlNWACwyXPGffz5aXHc6lty1Y2t4SWRqGteragsVdZ",
+            "ufDn5BlnJl9pdR_kdVFUsra2rWKEofkZeIC4yWytE58sMIihv",
+            "o9H1ScmmVwBcQP6XETqYd0aSHp1gOa9RdUPDvoXQ5oqygTqVt",
+            "xaDr6wUFKrKItgBMzWIdNZ6y7O9E0DhEPTbE9rfBo6KTFsHAZ",
+            "nMg4k68CDp2woYIaXbmYTWcvbzIuHO7_37GT79XdIwkm95QJ7",
+            "hYC9RiwrV7mesbY4PAahERJawntho0my942XheVLmGwLMBkQ",
+        );
+        let signature =
+            calc_signature(payload, privkey, "", SignatureTypes::Rs256)
+                .unwrap();
+        debug!("payload:\n{}\n", payload);
+        debug!("signature:\n{}\n", signature);
+        assert_eq!(signature, expected);
+
+        let valid = verify_signature(
+            payload,
+            &signature,
+            pubkey,
+            SignatureTypes::Rs256,
+        )
+        .unwrap();
+        assert!(valid);
     }
 }
