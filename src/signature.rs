@@ -32,10 +32,10 @@ pub enum SignatureTypes {
     Hs512,
     /// RSASSA-PKCS1-v1_5 using SHA-256
     Rs256,
-    /*/// RSASSA-PKCS1-v1_5 using SHA-384
+    /// RSASSA-PKCS1-v1_5 using SHA-384
     Rs384,
     /// RSASSA-PKCS1-v1_5 using SHA-512
-    Rs512,*/
+    Rs512,
     /// ECDSA using P-256 and SHA-256
     Es256,
     /// ECDSA using P-384 and SHA-384
@@ -98,7 +98,7 @@ impl SignatureTypes {
         match self {
             None => Other,
             Hs256 | Hs384 | Hs512 => Hmac,
-            Es256 | Es384 | Es512 | Rs256 => Pubkey,
+            Es256 | Es384 | Es512 | Rs256 | Rs384 | Rs512 => Pubkey,
             Auto | Retain => {
                 if jwt_header.contains("HS") || jwt_header.contains("hs") {
                     return Hmac;
@@ -245,6 +245,28 @@ pub fn calc_signature(
 
             Ok(base64::encode_config(signature, URL_SAFE_NO_PAD))
         }
+        Rs384 => {
+            // RSASSA-PKCS1-v1_5 using SHA-384
+
+            let secret_key = PKey::private_key_from_pem(secret.as_bytes())?;
+
+            let mut signer = Signer::new(MessageDigest::sha384(), &secret_key)?;
+            signer.update(payload.as_bytes())?;
+            let signature = signer.sign_to_vec()?;
+
+            Ok(base64::encode_config(signature, URL_SAFE_NO_PAD))
+        }
+        Rs512 => {
+            // RSASSA-PKCS1-v1_5 using SHA-512
+
+            let secret_key = PKey::private_key_from_pem(secret.as_bytes())?;
+
+            let mut signer = Signer::new(MessageDigest::sha512(), &secret_key)?;
+            signer.update(payload.as_bytes())?;
+            let signature = signer.sign_to_vec()?;
+
+            Ok(base64::encode_config(signature, URL_SAFE_NO_PAD))
+        }
         None => Ok("".to_string()),
         _ => bail!("Unrecognised signature type: {}", hash_type),
     }
@@ -358,6 +380,28 @@ pub fn verify_signature(
             verifier.update(payload.as_bytes())?;
             Ok(verifier.verify(&signature)?)
         }
+        Rs384 => {
+            // RSASSA-384
+
+            let signature = base64::decode_config(signature, URL_SAFE_NO_PAD)?;
+
+            let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
+
+            let mut verifier = Verifier::new(MessageDigest::sha384(), &pubkey)?;
+            verifier.update(payload.as_bytes())?;
+            Ok(verifier.verify(&signature)?)
+        }
+        Rs512 => {
+            // RSASSA-512
+
+            let signature = base64::decode_config(signature, URL_SAFE_NO_PAD)?;
+
+            let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
+
+            let mut verifier = Verifier::new(MessageDigest::sha512(), &pubkey)?;
+            verifier.update(payload.as_bytes())?;
+            Ok(verifier.verify(&signature)?)
+        }
         None => Ok(true),
         _ => bail!("Unrecognised signature type: {}", hash_type),
     }
@@ -383,7 +427,7 @@ pub fn generate_keypair(signature_type: SignatureTypes) -> Result<KeyPair> {
                 private: String::from_utf8(kp.private_key_to_pem()?)?,
             })
         }
-        Rs256 => {
+        Rs256 | Rs384 | Rs512 => {
             let rsa = Rsa::generate(2048)?;
             Ok(KeyPair {
                 public: String::from_utf8(rsa.public_key_to_pem()?)?,
@@ -430,7 +474,7 @@ mod test {
             assert!(kp.private.contains("BEGIN EC PRIVATE KEY"));
         }
 
-        for sig_type in &[Rs256] {
+        for sig_type in &[Rs256, Rs384, Rs512] {
             debug!("Signature type: {}", sig_type);
             let kp = generate_keypair(*sig_type).unwrap();
             debug!("Generated keypair:\n{:?}", kp);
@@ -667,11 +711,7 @@ ew==
         }
     }
 
-    #[test]
-    fn rs256() {
-        init();
-
-        let pubkey = r#"-----BEGIN PUBLIC KEY-----
+    const RSA_PUBKEY: &str = r#"-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAu1SU1LfVLPHCozMxH2Mo
 4lgOEePzNm0tRgeLezV6ffAt0gunVTLw7onLRnrq0/IzW7yWR7QkrmBL7jTKEn5u
 +qKhbwKfBstIs+bMY2Zkp18gnTxKLxoS2tFczGkPLPgizskuemMghRniWaoLcyeh
@@ -680,7 +720,7 @@ kd3qqGElvW/VDL5AaWTg0nLVkjRo9z+40RQzuVaE8AkAFmxZzow3x+VJYKdjykkJ
 cKWTjpBP2dPwVZ4WWC+9aGVd+Gyn1o0CLelf4rEjGoXbAAEgAqeGUxrcIlbjXfbc
 mwIDAQAB
 -----END PUBLIC KEY-----"#;
-        let privkey = r#"-----BEGIN PRIVATE KEY-----
+    const RSA_PRIVKEY: &str = r#"-----BEGIN PRIVATE KEY-----
 MIIEvwIBADANBgkqhkiG9w0BAQEFAASCBKkwggSlAgEAAoIBAQC7VJTUt9Us8cKj
 MzEfYyjiWA4R4/M2bS1GB4t7NXp98C3SC6dVMvDuictGeurT8jNbvJZHtCSuYEvu
 NMoSfm76oqFvAp8Gy0iz5sxjZmSnXyCdPEovGhLa0VzMaQ8s+CLOyS56YyCFGeJZ
@@ -709,6 +749,10 @@ TQrKhArgLXX4v3CddjfTRJkFWDbE/CkvKZNOrcf1nhaGCPspRJj2KUkj1Fhl9Cnc
 dn/RsYEONbwQSjIfMPkvxF+8HQ==
 -----END PRIVATE KEY-----"#;
 
+    #[test]
+    fn rs256() {
+        init();
+
         let payload = concat!(
             "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.",
             "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYW",
@@ -725,7 +769,7 @@ dn/RsYEONbwQSjIfMPkvxF+8HQ==
             "hYC9RiwrV7mesbY4PAahERJawntho0my942XheVLmGwLMBkQ",
         );
         let signature =
-            calc_signature(payload, privkey, "", SignatureTypes::Rs256)
+            calc_signature(payload, RSA_PRIVKEY, "", SignatureTypes::Rs256)
                 .unwrap();
         debug!("payload:\n{}\n", payload);
         debug!("signature:\n{}\n", signature);
@@ -734,8 +778,80 @@ dn/RsYEONbwQSjIfMPkvxF+8HQ==
         let valid = verify_signature(
             payload,
             &signature,
-            pubkey,
+            RSA_PUBKEY,
             SignatureTypes::Rs256,
+        )
+        .unwrap();
+        assert!(valid);
+    }
+
+    #[test]
+    fn rs384() {
+        init();
+
+        let payload = concat!(
+            "eyJhbGciOiJSUzM4NCIsInR5cCI6IkpXVCJ9.",
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYW",
+            "RtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0"
+        );
+
+        let expected = concat!(
+            "o1hC1xYbJolSyh0-bOY230w22zEQSk5TiBfc-OCvtpI2JtYlW",
+            "-23-8B48NpATozzMHn0j3rE0xVUldxShzy0xeJ7vYAccVXu2G",
+            "s9rnTVqouc-UZu_wJHkZiKBL67j8_61L6SXswzPAQu4kVDwAe",
+            "fGf5hyYBUM-80vYZwWPEpLI8K4yCBsF6I9N1yQaZAJmkMp_Iw",
+            "371Menae4Mp4JusvBJS-s6LrmG2QbiZaFaxVJiW8KlUkWyUCn",
+            "s8-qFl5OMeYlgGFsyvvSHvXCzQrsEXqyCdS4tQJd73ayYA4SP",
+            "tCb9clz76N1zE5WsV4Z0BYrxeb77oA7jJhh994RAPzCG0hmQ",
+        );
+        let signature =
+            calc_signature(payload, RSA_PRIVKEY, "", SignatureTypes::Rs384)
+                .unwrap();
+        debug!("payload:\n{}\n", payload);
+        debug!("signature:\n{}\n", signature);
+        assert_eq!(signature, expected);
+
+        let valid = verify_signature(
+            payload,
+            &signature,
+            RSA_PUBKEY,
+            SignatureTypes::Rs384,
+        )
+        .unwrap();
+        assert!(valid);
+    }
+
+    #[test]
+    fn rs512() {
+        init();
+
+        let payload = concat!(
+            "eyJhbGciOiJSUzUxMiIsInR5cCI6IkpXVCJ9.",
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYW",
+            "RtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0"
+        );
+
+        let expected = concat!(
+            "jYW04zLDHfR1v7xdrW3lCGZrMIsVe0vWCfVkN2DRns2c3MN-m",
+            "cp_-RE6TN9umSBYoNV-mnb31wFf8iun3fB6aDS6m_OXAiURVE",
+            "KrPFNGlR38JSHUtsFzqTOj-wFrJZN4RwvZnNGSMvK3wzzUriZ",
+            "qmiNLsG8lktlEn6KA4kYVaM61_NpmPHWAjGExWv7cjHYupcjM",
+            "SmR8uMTwN5UuAwgW6FRstCJEfoxwb0WKiyoaSlDuIiHZJ0cyG",
+            "hhEmmAPiCwtPAwGeaL1yZMcp0p82cpTQ5Qb-7CtRov3N4DcOH",
+            "gWYk6LomPR5j5cCkePAz87duqyzSMpCB0mCOuE3CU2VMtGeQ",
+        );
+        let signature =
+            calc_signature(payload, RSA_PRIVKEY, "", SignatureTypes::Rs512)
+                .unwrap();
+        debug!("payload:\n{}\n", payload);
+        debug!("signature:\n{}\n", signature);
+        assert_eq!(signature, expected);
+
+        let valid = verify_signature(
+            payload,
+            &signature,
+            RSA_PUBKEY,
+            SignatureTypes::Rs512,
         )
         .unwrap();
         assert!(valid);

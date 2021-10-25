@@ -23,7 +23,7 @@ Or download the latest release for your platform from [the releases page](https:
 * Sign and encode tokens with common algorithms
 * Accept and encode invalid JSON payloads
 * Alter the claims while retaining the original signature
-* Signature types: HMAC-SHA, ECDSA
+* Signature types: HMAC-SHA, ECDSA, RSASSA-PKCS1-v1_5
 
 ## Attacks
 <dl>
