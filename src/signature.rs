@@ -174,11 +174,18 @@ pub fn calc_signature(
             hasher.update(payload.as_bytes());
             let payload = hasher.finalize();
             debug!("SHA256: {:02x?}", payload);
+
             let secret_key = EcKey::private_key_from_pem(secret.as_bytes())?;
             let signature = EcdsaSig::sign(&payload, &secret_key)?;
+
             let mut signature_bytes = signature.r().to_vec();
+            signature_bytes.pad_to(0, 32);
             debug!("r len: {}", signature_bytes.len());
-            signature_bytes.extend_from_slice(&signature.s().to_vec());
+
+            let mut s_padded = signature.s().to_vec();
+            s_padded.pad_to(0, 32);
+
+            signature_bytes.extend_from_slice(&s_padded);
             debug!("total len: {}", signature_bytes.len());
 
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
@@ -189,11 +196,18 @@ pub fn calc_signature(
             hasher.update(payload.as_bytes());
             let payload = hasher.finalize();
             debug!("SHA384: {:02x?}", payload);
+
             let secret_key = EcKey::private_key_from_pem(secret.as_bytes())?;
             let signature = EcdsaSig::sign(&payload, &secret_key)?;
+
             let mut signature_bytes = signature.r().to_vec();
+            signature_bytes.pad_to(0, 48);
             debug!("r len: {}", signature_bytes.len());
-            signature_bytes.extend_from_slice(&signature.s().to_vec());
+
+            let mut s_padded = signature.s().to_vec();
+            s_padded.pad_to(0, 48);
+
+            signature_bytes.extend_from_slice(&s_padded);
             debug!("total len: {}", signature_bytes.len());
 
             Ok(base64::encode_config(signature_bytes, URL_SAFE_NO_PAD))
@@ -204,13 +218,17 @@ pub fn calc_signature(
             hasher.update(payload.as_bytes());
             let payload = hasher.finalize();
             debug!("SHA512: {:02x?}", payload);
+
             let secret_key = EcKey::private_key_from_pem(secret.as_bytes())?;
             let signature = EcdsaSig::sign(&payload, &secret_key)?;
+
             let mut signature_bytes = signature.r().to_vec();
             signature_bytes.pad_to(0, 66);
             debug!("r len: {}", signature_bytes.len());
+
             let mut s_padded = signature.s().to_vec();
             s_padded.pad_to(0, 66);
+
             signature_bytes.extend_from_slice(&s_padded);
             debug!("total len: {}", signature_bytes.len());
 
