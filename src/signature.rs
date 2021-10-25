@@ -1,6 +1,5 @@
 use anyhow::{anyhow, bail, Result};
 use base64::URL_SAFE_NO_PAD;
-use crypto_hashes::sha2::{Digest, Sha256, Sha384, Sha512};
 use hmac::{Hmac, Mac, NewMac};
 use openssl::bn::BigNum;
 use openssl::ec::{EcGroup, EcKey};
@@ -10,6 +9,7 @@ use openssl::nid::Nid;
 use openssl::pkey::PKey;
 use openssl::rsa::Rsa;
 use openssl::sign::{Signer, Verifier};
+use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::fmt::{self, Display};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
