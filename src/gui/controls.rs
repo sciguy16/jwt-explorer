@@ -58,7 +58,12 @@ pub(crate) fn keypair(
     });
 }
 
-pub fn attacks(ui: &mut Ui, attacks: &mut Vec<Attack>, jwt_claims: &str) {
+pub fn attacks(
+    ui: &mut Ui,
+    attacks: &mut Vec<Attack>,
+    jwt_header: &str,
+    jwt_claims: &str,
+) {
     use crate::attack;
     ui.horizontal(|ui| {
         ui.label("Attacks: ");
@@ -68,6 +73,12 @@ pub fn attacks(ui: &mut Ui, attacks: &mut Vec<Attack>, jwt_claims: &str) {
             for attack in generated_attacks {
                 attacks.push(attack);
             }
+        }
+        if ui.button("Null sig").clicked() {
+            attacks.push(Attack {
+                name: "Null signature".to_string(),
+                token: attack::null_sig(jwt_header, jwt_claims),
+            });
         }
     });
 }

@@ -32,6 +32,12 @@ Or download the latest release for your platform from [the releases page](https:
 		"Sign" the JWT with an empty signature and set the algorithm type to "None".
 		Accepted by some implementations which trust the JWT's choice of signature algorithm.
 		Some parsers check for "none" but don't check for e.g. "nOnE".
+		Make sure to try with and without the trailing dot.
+	</dd>
+	<dt>Null signature</dt>
+	<dd>
+		Leave the original header intact but don't provide a signature.
+		Make sure to try with and without the trailing dot.
 	</dd>
 	<dt>Guess common secrets</dt>
 	<dd>

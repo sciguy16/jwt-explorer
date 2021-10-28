@@ -30,6 +30,12 @@ pub fn alg_none(claims: &str) -> Vec<Attack> {
     attacks
 }
 
+pub fn null_sig(header: &str, claims: &str) -> String {
+    let mut token = encode_payload(header, claims);
+    token.push('.');
+    token
+}
+
 pub fn try_some_common_secrets(jwt_input: &str, secret: &mut String) {
     for candidate in COMMON_SECRETS {
         let jwt = decode_jwt(jwt_input, candidate, "");

@@ -240,7 +240,9 @@ impl epi::App for AppState {
                             _ => (),
                         }
 
-                        gui::controls::attacks(ui, attacks, jwt_claims);
+                        gui::controls::attacks(
+                            ui, attacks, jwt_header, jwt_claims,
+                        );
                         gui::controls::iat_and_exp_time(ui, jwt_claims);
                         gui::controls::signature_type(
                             ui,
