@@ -1,14 +1,15 @@
+use crate::newtypes::*;
 use crate::signature::{SignatureClass, SignatureTypes};
 use crate::JwtHeader;
 use anyhow::{anyhow, Result};
 use base64::URL_SAFE_NO_PAD;
 use serde_json::Value;
 
-pub fn encode_payload(header: &str, claims: &str) -> String {
+pub fn encode_payload(header: &Header, claims: &str) -> String {
     // Try minifying the JSONs - if it fails due to invalid JSON syntax
     // then just b64 encode what we're given
     let encoded_header =
-        if let Ok(parsed) = serde_json::from_str::<Value>(header) {
+        if let Ok(parsed) = serde_json::from_str::<Value>(header.as_ref()) {
             base64::encode_config(parsed.to_string(), URL_SAFE_NO_PAD)
         } else {
             base64::encode_config(header, URL_SAFE_NO_PAD)
@@ -28,7 +29,7 @@ pub fn encode_payload(header: &str, claims: &str) -> String {
 }
 
 pub fn encode_and_sign(
-    header: &str,
+    header: &Header,
     claims: &str,
     secret: &str,
     private_key: &str,
@@ -38,7 +39,7 @@ pub fn encode_and_sign(
     // If hash type is auto then try to parse the header and pick the
     // correct hash type
     if hash_type == SignatureTypes::Auto {
-        let jwt_header: JwtHeader = serde_json::from_str(header)?;
+        let jwt_header: JwtHeader = serde_json::from_str(header.as_ref())?;
         hash_type =
             SignatureTypes::from_header(&jwt_header).ok_or_else(|| {
                 anyhow!("Unrecognised signature type `{}`", jwt_header.alg)
@@ -69,11 +70,11 @@ mod test {
     fn encode_payload_invalid_json() {
         init();
 
-        let header = "this isn't json";
+        let header = "this isn't json".into();
         let claims = "also not json";
         let target = "dGhpcyBpc24ndCBqc29u.YWxzbyBub3QganNvbg";
 
-        let encoded = encode_payload(header, claims);
+        let encoded = encode_payload(&header, claims);
         assert_eq!(encoded, target);
     }
 
@@ -84,14 +85,15 @@ mod test {
         let header = r#"{
     		"alg": "none",
     		"typ": "JWT"
-    	}"#;
+    	}"#
+        .into();
         let claims = r#"{
     		"hello": "world"
     	}"#;
         let target =
             "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJoZWxsbyI6IndvcmxkIn0";
 
-        let encoded = encode_payload(header, claims);
+        let encoded = encode_payload(&header, claims);
         assert_eq!(encoded, target);
     }
 
@@ -102,7 +104,8 @@ mod test {
         let header = r#"{
     		"alg": "HS384",
     		"typ": "JWT"
-    	}"#;
+    	}"#
+        .into();
         let claims = r#"{
     		"hello": "world"
     	}"#;
@@ -116,7 +119,7 @@ mod test {
         );
 
         let encoded = encode_and_sign(
-            header,
+            &header,
             claims,
             secret,
             "",

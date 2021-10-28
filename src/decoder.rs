@@ -37,7 +37,7 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str, public_key: &str) -> Jwt {
                 if let Some(sig_type) =
                     SignatureTypes::from_header(&header_decoded)
                 {
-                    let key = match sig_type.class(&header) {
+                    let key = match sig_type.class(&header.into()) {
                         SignatureClass::Hmac => secret,
                         SignatureClass::Pubkey => public_key,
                         SignatureClass::Other => "",
@@ -68,7 +68,7 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str, public_key: &str) -> Jwt {
     // decode them
     debug!("Decoding header: {}", header);
     match decode_base64(header) {
-        Ok(h) => jwt.header = format_json_string(&h),
+        Ok(h) => jwt.header = format_json_string(&h).into(),
         Err(e) => warn!("{}", e),
     }
     debug!("Decoded: {:?}", jwt.header);

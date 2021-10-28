@@ -1,3 +1,4 @@
+use crate::newtypes::*;
 use crate::{Attack, Clipboard, LOG};
 use eframe::egui::{
     self, Button, Color32, ScrollArea, TextEdit, TextStyle, Ui,
@@ -20,7 +21,7 @@ pub fn jwt_entry(
     jwt_input: &mut String,
     secret: &mut String, // needs &mut for secret guessing attack
     public_key: &str,
-    jwt_header: &mut String,
+    jwt_header: &mut Header,
     jwt_claims: &mut String,
     original_signature: &mut String,
 ) {
@@ -35,7 +36,7 @@ pub fn jwt_entry(
             }
             let decoded =
                 crate::decoder::decode_jwt(jwt_input, secret, public_key);
-            *jwt_header = decoded.header;
+            *jwt_header = decoded.header.into();
             *jwt_claims = decoded.claims;
             *original_signature = decoded.signature;
             if decoded.signature_valid {
@@ -64,7 +65,7 @@ pub fn header_and_claims(
     ui: &mut Ui,
     half_width: f32,
     half_height: f32,
-    jwt_header: &mut String,
+    jwt_header: &mut Header,
     jwt_claims: &mut String,
 ) {
     ui.vertical(|ui| {
@@ -74,7 +75,9 @@ pub fn header_and_claims(
             ScrollArea::vertical()
                 .id_source("jwt_header")
                 .show(ui, |ui| {
-                    ui.add(TextEdit::multiline(jwt_header).code_editor());
+                    ui.add(
+                        TextEdit::multiline(jwt_header.as_mut()).code_editor(),
+                    );
                     ui.add(TextEdit::multiline(jwt_claims).code_editor());
                 });
         });

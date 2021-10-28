@@ -5,6 +5,7 @@ use strum::IntoEnumIterator;
 use crate::attack::Attack;
 use crate::json_editor::{update_alg, update_time, TimeOffset};
 use crate::log_err;
+use crate::newtypes::*;
 use crate::signature::{generate_keypair, SignatureClass, SignatureTypes};
 
 pub fn secret(ui: &mut Ui, secret: &mut String) {
@@ -61,7 +62,7 @@ pub(crate) fn keypair(
 pub fn attacks(
     ui: &mut Ui,
     attacks: &mut Vec<Attack>,
-    jwt_header: &str,
+    jwt_header: &Header,
     jwt_claims: &str,
 ) {
     use crate::attack;
@@ -155,7 +156,7 @@ pub fn iat_and_exp_time(ui: &mut Ui, jwt_claims: &mut String) {
 pub fn signature_type(
     ui: &mut Ui,
     signature_type: &mut SignatureTypes,
-    jwt_header: &mut String,
+    jwt_header: &mut Header,
 ) {
     ui.horizontal(|ui| {
         ui.label("Signature type: ");
@@ -171,7 +172,7 @@ pub fn signature_type(
                 }
             });
         if ui.button("Update header").clicked() {
-            log_err!(update_alg(jwt_header, *signature_type));
+            log_err!(update_alg(jwt_header.as_mut(), *signature_type));
         }
     });
 }
@@ -179,7 +180,7 @@ pub fn signature_type(
 #[allow(clippy::too_many_arguments)]
 pub fn encode_and_sign(
     ui: &mut Ui,
-    jwt_header: &str,
+    jwt_header: &Header,
     jwt_claims: &str,
     original_signature: &str,
     secret: &str,

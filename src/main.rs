@@ -24,9 +24,11 @@ mod encoder;
 mod gui;
 mod json_editor;
 mod json_formatter;
+mod newtypes;
 mod signature;
 
 use attack::Attack;
+use newtypes::*;
 use signature::{SignatureClass, SignatureTypes};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
@@ -99,7 +101,7 @@ pub struct JwtHeader {
 #[derive(Default)]
 struct AppState {
     jwt_input: String,
-    jwt_header: String,
+    jwt_header: Header,
     jwt_claims: String,
     original_signature: String,
     secret: String,
