@@ -8,7 +8,7 @@ use openssl::hash::MessageDigest;
 use openssl::nid::Nid;
 use openssl::pkey::PKey;
 use openssl::rsa::Rsa;
-use openssl::sign::{Signer, Verifier};
+use openssl::sign::{RsaPssSaltlen, Signer, Verifier};
 use sha2::{Digest, Sha256, Sha384, Sha512};
 use std::fmt::{self, Display};
 use strum::IntoEnumIterator;
@@ -41,9 +41,9 @@ pub enum SignatureTypes {
     /// ECDSA using P-384 and SHA-384
     Es384,
     /// ECDSA using P-521 and SHA-512
-    Es512, /*
-           /// RSASSA-PSS using SHA-256 and MGF1 with SHA-256
-           Ps256,
+    Es512,
+    /// RSASSA-PSS using SHA-256 and MGF1 with SHA-256
+    Ps256, /*
            /// RSASSA-PSS using SHA-384 and MGF1 with SHA-384
            Ps384,
            /// RSASSA-PSS using SHA-512 and MGF1 with SHA-512
@@ -98,7 +98,7 @@ impl SignatureTypes {
         match self {
             None => Other,
             Hs256 | Hs384 | Hs512 => Hmac,
-            Es256 | Es384 | Es512 | Rs256 | Rs384 | Rs512 => Pubkey,
+            Es256 | Es384 | Es512 | Rs256 | Rs384 | Rs512 | Ps256 => Pubkey,
             Auto | Retain => {
                 if jwt_header.contains("HS") || jwt_header.contains("hs") {
                     return Hmac;
@@ -267,6 +267,19 @@ pub fn calc_signature(
 
             Ok(base64::encode_config(signature, URL_SAFE_NO_PAD))
         }
+        Ps256 => {
+            // RSASSA-PSS using SHA-256 and MGF1 with SHA-256
+
+            let secret_key = PKey::private_key_from_pem(secret.as_bytes())?;
+
+            let mut signer = Signer::new(MessageDigest::sha256(), &secret_key)?;
+            //signer.set_rsa_pss_saltlen(RsaPssSaltlen::DIGEST_LENGTH)?;
+            signer.set_rsa_mgf1_md(MessageDigest::sha256())?;
+            signer.update(payload.as_bytes())?;
+            let signature = signer.sign_to_vec()?;
+
+            Ok(base64::encode_config(signature, URL_SAFE_NO_PAD))
+        }
         None => Ok("".to_string()),
         _ => bail!("Unrecognised signature type: {}", hash_type),
     }
@@ -399,6 +412,19 @@ pub fn verify_signature(
             let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
 
             let mut verifier = Verifier::new(MessageDigest::sha512(), &pubkey)?;
+            verifier.update(payload.as_bytes())?;
+            Ok(verifier.verify(&signature)?)
+        }
+
+        Ps256 => {
+            // RSASSA-PSS using SHA-256 and MGF1 with SHA-256
+
+            let signature = base64::decode_config(signature, URL_SAFE_NO_PAD)?;
+
+            let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
+
+            let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey)?;
+            verifier.set_rsa_mgf1_md(MessageDigest::sha256())?;
             verifier.update(payload.as_bytes())?;
             Ok(verifier.verify(&signature)?)
         }
@@ -852,6 +878,42 @@ dn/RsYEONbwQSjIfMPkvxF+8HQ==
             &signature,
             RSA_PUBKEY,
             SignatureTypes::Rs512,
+        )
+        .unwrap();
+        assert!(valid);
+    }
+
+    #[test]
+    fn ps256() {
+        init();
+
+        let payload = concat!(
+            "eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.",
+            "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiYW",
+            "RtaW4iOnRydWUsImlhdCI6MTUxNjIzOTAyMn0"
+        );
+
+        let expected = concat!(
+            "iOeNU4dAFFeBwNj6qdhdvm-IvDQrTa6R22lQVJVuWJxorJfeQ",
+            "ww5Nwsra0PjaOYhAMj9jNMO5YLmud8U7iQ5gJK2zYyepeSuXh",
+            "fSi8yjFZfRiSkelqSkU19I-Ja8aQBDbqXf2SAWA8mHF8VS3F0",
+            "8rgEaLCyv98fLLH4vSvsJGf6ueZSLKDVXz24rZRXGWtYYk_OY",
+            "YTVgR1cg0BLCsuCvqZvHleImJKiWmtS0-CymMO4MMjCy_FIl6",
+            "I56NqLE9C87tUVpo1mT-kbg5cHDD8I7MjCW5Iii5dethB4Vid",
+            "3mZ6emKjVYgXrtkOQ-JyGMh6fnQxEFN1ft33GX2eRHluK9eg",
+        );
+        let signature =
+            calc_signature(payload, RSA_PRIVKEY, "", SignatureTypes::Ps256)
+                .unwrap();
+        debug!("payload:\n{}\n", payload);
+        debug!("signature:\n{}\n", signature);
+        assert_eq!(signature, expected);
+
+        let valid = verify_signature(
+            payload,
+            &signature,
+            RSA_PUBKEY,
+            SignatureTypes::Ps256,
         )
         .unwrap();
         assert!(valid);
