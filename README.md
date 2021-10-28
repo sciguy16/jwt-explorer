@@ -47,5 +47,7 @@ the Apache License (Version 2.0).
 
 Fonts used are distributed under the terms of the Open Font License.
 
+JWT Explorer binaries include a statically linked copy of [OpenSSL](https://github.com/openssl/openssl) which is distributed under the terms of the Apache License 2.0.
+
 See [LICENSE-APACHE](LICENSE-APACHE), [LICENSE-MIT](LICENSE-MIT), and
 fonts/\*/LICENSE for details.
