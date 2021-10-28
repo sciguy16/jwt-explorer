@@ -82,7 +82,7 @@ jobs:
           # Stick the binary and readme into a directory and zip the directory
           mkdir jwt-explorer
           mkdir jwt-explorer/images
-          cp README.md Changelog.md jwt-explorer/
+          cp README.md Changelog.md LICENSE-* jwt-explorer/
           cp images/overview.png jwt-explorer/images/
           cp target/release/jwt-explorer jwt-explorer/
           zip -r \
@@ -134,7 +134,7 @@ jobs:
         shell: powershell
         run: |
           $opts = @{
-            Path = ".\target\release\jwt-explorer.exe", ".\README.md", ".\Changelog.md", ".\images"
+            Path = ".\target\release\jwt-explorer.exe", ".\README.md", ".\Changelog.md", ".\images", ".\LICENSE-APACHE", ".\LICENSE-MIT", ".\LICENSE-OFL"
             DestinationPath = "jwt-explorer_${{ needs.create_new_release.outputs.version_num }}_amd64_windows.zip"
           }
           Compress-Archive @opts

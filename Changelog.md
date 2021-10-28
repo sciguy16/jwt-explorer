@@ -6,10 +6,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
-* Added signature type `RETAIN` to copy the original signature straight into the re-encoded token
-* Added button to copy all attacks to clipboard
-* Added support for ES256, ES384, and ES512 ECDSA signatures
-* Added support for RSASSA-PKCS1-v1_5 signatures using SHA256, SHA384, and SHA512
 
 ### Changed
 
@@ -20,6 +16,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 ### Security
+
+## [v0.4.0]
+### Added
+* Added signature type `RETAIN` to copy the original signature straight into the re-encoded token
+* Added button to copy all attacks to clipboard
+* Added support for ES256, ES384, and ES512 ECDSA signatures
+* Added support for RSASSA-PKCS1-v1_5 signatures using SHA256, SHA384, and SHA512
 
 ## [v0.3.1]
 ### Fixed

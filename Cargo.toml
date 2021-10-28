@@ -1,6 +1,6 @@
 [package]
 name = "jwt-explorer"
-version = "0.3.1"
+version = "0.4.0"
 edition = "2018"
 description = "Decode, explore, and sign JWTs"
 repository = "https://github.com/sciguy16/jwt-explorer"
