@@ -31,8 +31,8 @@ pub fn encode_payload(header: &Header, claims: &Claims) -> String {
 pub fn encode_and_sign(
     header: &Header,
     claims: &Claims,
-    secret: &str,
-    private_key: &str,
+    secret: &Secret,
+    private_key: &PrivKey,
     original_signature: &str,
     mut hash_type: SignatureTypes,
 ) -> Result<String> {
@@ -46,8 +46,8 @@ pub fn encode_and_sign(
             })?;
     }
     let key = match hash_type.class(header) {
-        SignatureClass::Hmac => secret,
-        SignatureClass::Pubkey => private_key,
+        SignatureClass::Hmac => secret.as_str(),
+        SignatureClass::Pubkey => private_key.as_str(),
         SignatureClass::Other => "",
     };
     let payload = encode_payload(header, claims);
@@ -111,7 +111,7 @@ mod test {
     		"hello": "world"
     	}"#
         .into();
-        let secret = "password";
+        let secret = "password".into();
         let target = concat!(
             "eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9",
             ".",
@@ -123,8 +123,8 @@ mod test {
         let encoded = encode_and_sign(
             &header,
             &claims,
-            secret,
-            "",
+            &secret,
+            &Default::default(),
             "",
             SignatureTypes::Auto,
         )

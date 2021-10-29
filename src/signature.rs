@@ -411,8 +411,8 @@ pub fn verify_signature(
 
 #[derive(Debug)]
 pub struct KeyPair {
-    pub public: String,
-    pub private: String,
+    pub public: PubKey,
+    pub private: PrivKey,
 }
 
 pub fn generate_keypair(signature_type: SignatureTypes) -> Result<KeyPair> {
@@ -425,15 +425,15 @@ pub fn generate_keypair(signature_type: SignatureTypes) -> Result<KeyPair> {
                 .expect("Groups are all defined for relevant signatures");
             let kp = EcKey::generate(&group)?;
             Ok(KeyPair {
-                public: String::from_utf8(kp.public_key_to_pem()?)?,
-                private: String::from_utf8(kp.private_key_to_pem()?)?,
+                public: String::from_utf8(kp.public_key_to_pem()?)?.into(),
+                private: String::from_utf8(kp.private_key_to_pem()?)?.into(),
             })
         }
         Rs256 | Rs384 | Rs512 => {
             let rsa = Rsa::generate(2048)?;
             Ok(KeyPair {
-                public: String::from_utf8(rsa.public_key_to_pem()?)?,
-                private: String::from_utf8(rsa.private_key_to_pem()?)?,
+                public: String::from_utf8(rsa.public_key_to_pem()?)?.into(),
+                private: String::from_utf8(rsa.private_key_to_pem()?)?.into(),
             })
         }
         _ => bail!(
@@ -472,16 +472,16 @@ mod test {
             debug!("Signature type: {}", sig_type);
             let kp = generate_keypair(*sig_type).unwrap();
             debug!("Generated keypair:\n{:?}", kp);
-            assert!(kp.public.contains("BEGIN PUBLIC KEY"));
-            assert!(kp.private.contains("BEGIN EC PRIVATE KEY"));
+            assert!(kp.public.as_str().contains("BEGIN PUBLIC KEY"));
+            assert!(kp.private.as_str().contains("BEGIN EC PRIVATE KEY"));
         }
 
         for sig_type in &[Rs256, Rs384, Rs512] {
             debug!("Signature type: {}", sig_type);
             let kp = generate_keypair(*sig_type).unwrap();
             debug!("Generated keypair:\n{:?}", kp);
-            assert!(kp.public.contains("BEGIN PUBLIC KEY"));
-            assert!(kp.private.contains("BEGIN RSA PRIVATE KEY"));
+            assert!(kp.public.as_str().contains("BEGIN PUBLIC KEY"));
+            assert!(kp.private.as_str().contains("BEGIN RSA PRIVATE KEY"));
         }
     }
 

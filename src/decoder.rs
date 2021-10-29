@@ -14,7 +14,11 @@ pub struct Jwt {
     pub signature_valid: bool,
 }
 
-pub(crate) fn decode_jwt(inp: &str, secret: &str, public_key: &str) -> Jwt {
+pub(crate) fn decode_jwt(
+    inp: &str,
+    secret: &Secret,
+    public_key: &PubKey,
+) -> Jwt {
     let mut jwt = Jwt::default();
     if inp.is_empty() {
         warn!("{}", "Empty input");
@@ -39,8 +43,8 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str, public_key: &str) -> Jwt {
                     SignatureTypes::from_header(&header_decoded)
                 {
                     let key = match sig_type.class(&header.into()) {
-                        SignatureClass::Hmac => secret,
-                        SignatureClass::Pubkey => public_key,
+                        SignatureClass::Hmac => secret.as_str(),
+                        SignatureClass::Pubkey => public_key.as_str(),
                         SignatureClass::Other => "",
                     };
 
@@ -129,7 +133,7 @@ mod test {
         let header = "{\n  \"alg\": \"none\",\n  \"type\": \"JWT\"\n}";
         let claims = "{\n  \"hello\": \"world\"\n}";
 
-        let decoded = decode_jwt(inp, "", "");
+        let decoded = decode_jwt(inp, &Default::default(), &Default::default());
         assert_eq!(decoded.header.as_str(), header);
         assert_eq!(decoded.claims.as_str(), claims);
         assert!(decoded.signature_valid);
@@ -146,7 +150,7 @@ mod test {
         let header = "{\n  \"alg\": \"HS384\",\n  \"type\": \"JWT\"\n}";
         let claims = "{\n  \"hello\": \"world\"\n}";
 
-        let decoded = decode_jwt(inp, "password", "");
+        let decoded = decode_jwt(inp, &"password".into(), &Default::default());
         assert_eq!(decoded.header.as_str(), header);
         assert_eq!(decoded.claims.as_str(), claims);
         assert!(decoded.signature_valid);
@@ -163,7 +167,7 @@ mod test {
         let header = "{\n  \"alg\": \"HS384\",\n  \"type\": \"JWT\"\n}";
         let claims = "{\n  \"hello\": \"world\"\n}";
 
-        let decoded = decode_jwt(inp, "password", "");
+        let decoded = decode_jwt(inp, &"password".into(), &Default::default());
         assert_eq!(decoded.header.as_str(), header);
         assert_eq!(decoded.claims.as_str(), claims);
         assert!(!decoded.signature_valid);

@@ -46,9 +46,17 @@ macro_rules! newtype_impls {
             pub fn as_str(&self) -> &str {
                 self.0.as_str()
             }
+
+            #[allow(dead_code)]
+            pub fn is_empty(&self) -> bool {
+                self.0.is_empty()
+            }
         }
     };
 }
 
 newtype_impls!(Header);
 newtype_impls!(Claims);
+newtype_impls!(Secret);
+newtype_impls!(PubKey);
+newtype_impls!(PrivKey);

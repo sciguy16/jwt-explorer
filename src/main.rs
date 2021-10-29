@@ -104,9 +104,9 @@ struct AppState {
     jwt_header: Header,
     jwt_claims: Claims,
     original_signature: String,
-    secret: String,
-    pubkey: String,
-    privkey: String,
+    secret: Secret,
+    pubkey: PubKey,
+    privkey: PrivKey,
     keypair_display_state: gui::controls::KeyPairDisplayState,
     signature_type: SignatureTypes,
     attacks: Vec<Attack>,
@@ -341,8 +341,9 @@ mod test {
         init();
 
         let jwt_input = JWT_HS384.to_string();
-        let secret = "";
-        let decoded = decoder::decode_jwt(&jwt_input, secret, "");
+        let secret = Default::default();
+        let decoded =
+            decoder::decode_jwt(&jwt_input, &secret, &Default::default());
         assert_eq!(decoded.header.as_str(), JWT_HS384_DECODED.0);
         assert_eq!(decoded.claims.as_str(), JWT_HS384_DECODED.1);
     }

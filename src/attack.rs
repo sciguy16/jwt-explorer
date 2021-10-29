@@ -37,12 +37,13 @@ pub fn null_sig(header: &Header, claims: &Claims) -> String {
     token
 }
 
-pub fn try_some_common_secrets(jwt_input: &str, secret: &mut String) {
+pub fn try_some_common_secrets(jwt_input: &str, secret: &mut Secret) {
     for candidate in COMMON_SECRETS {
-        let jwt = decode_jwt(jwt_input, candidate, "");
+        let candidate = (*candidate).into();
+        let jwt = decode_jwt(jwt_input, &candidate, &Default::default());
         if jwt.signature_valid {
             info!("Guessed secret: '{}'", candidate);
-            *secret = candidate.to_string();
+            *secret = candidate;
         }
     }
 }
@@ -119,10 +120,10 @@ mod test {
             ".",
             "0EC6D80cYS6kjS6iw5bYimCQkUJESOd-8bi0Yku5Zfk"
         );
-        let mut secret = String::new();
+        let mut secret = Default::default();
 
         try_some_common_secrets(jwt_input, &mut secret);
 
-        assert_eq!(secret, "password");
+        assert_eq!(secret, "password".into());
     }
 }

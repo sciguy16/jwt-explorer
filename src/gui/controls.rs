@@ -8,10 +8,13 @@ use crate::log_err;
 use crate::newtypes::*;
 use crate::signature::{generate_keypair, SignatureClass, SignatureTypes};
 
-pub fn secret(ui: &mut Ui, secret: &mut String) {
+pub fn secret(ui: &mut Ui, secret: &mut Secret) {
     ui.horizontal(|ui| {
         ui.label("Secret: ");
-        ui.add(TextEdit::singleline(secret).text_style(TextStyle::Monospace));
+        ui.add(
+            TextEdit::singleline(secret.as_mut())
+                .text_style(TextStyle::Monospace),
+        );
     });
 }
 
@@ -24,15 +27,15 @@ pub(crate) struct KeyPairDisplayState {
 pub(crate) fn keypair(
     ui: &mut Ui,
     state: &mut KeyPairDisplayState,
-    pubkey: &mut String,
-    privkey: &mut String,
+    pubkey: &mut PubKey,
+    privkey: &mut PrivKey,
 ) {
     ui.horizontal(|ui| {
         ui.label("Public: ");
         let inp = if !state.pubkey_focused {
-            TextEdit::singleline(pubkey)
+            TextEdit::singleline(pubkey.as_mut())
         } else {
-            TextEdit::multiline(pubkey)
+            TextEdit::multiline(pubkey.as_mut())
         };
         let inp_state = ui.add(inp);
         if inp_state.gained_focus() {
@@ -45,9 +48,9 @@ pub(crate) fn keypair(
     ui.horizontal(|ui| {
         ui.label("Private: ");
         let inp = if !state.privkey_focused {
-            TextEdit::singleline(privkey)
+            TextEdit::singleline(privkey.as_mut())
         } else {
-            TextEdit::multiline(privkey)
+            TextEdit::multiline(privkey.as_mut())
         };
         let inp_state = ui.add(inp);
         if inp_state.gained_focus() {
@@ -184,9 +187,9 @@ pub fn encode_and_sign(
     jwt_header: &Header,
     jwt_claims: &Claims,
     original_signature: &str,
-    secret: &str,
-    public_key: &mut String,
-    private_key: &mut String,
+    secret: &Secret,
+    public_key: &mut PubKey,
+    private_key: &mut PrivKey,
     signature_type: SignatureTypes,
     attacks: &mut Vec<Attack>,
 ) {

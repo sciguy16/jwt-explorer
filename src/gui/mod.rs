@@ -19,8 +19,8 @@ pub fn header(ui: &mut Ui) {
 pub fn jwt_entry(
     ui: &mut Ui,
     jwt_input: &mut String,
-    secret: &mut String, // needs &mut for secret guessing attack
-    public_key: &str,
+    secret: &mut Secret, // needs &mut for secret guessing attack
+    public_key: &PubKey,
     jwt_header: &mut Header,
     jwt_claims: &mut Claims,
     original_signature: &mut String,
