@@ -130,7 +130,7 @@ mod test {
         let claims = "{\n  \"hello\": \"world\"\n}";
 
         let decoded = decode_jwt(inp, "", "");
-        assert_eq!(decoded.header, header);
+        assert_eq!(decoded.header.as_str(), header);
         assert_eq!(decoded.claims, claims);
         assert!(decoded.signature_valid);
     }
@@ -147,7 +147,7 @@ mod test {
         let claims = "{\n  \"hello\": \"world\"\n}";
 
         let decoded = decode_jwt(inp, "password", "");
-        assert_eq!(decoded.header, header);
+        assert_eq!(decoded.header.as_str(), header);
         assert_eq!(decoded.claims, claims);
         assert!(decoded.signature_valid);
     }
@@ -164,7 +164,7 @@ mod test {
         let claims = "{\n  \"hello\": \"world\"\n}";
 
         let decoded = decode_jwt(inp, "password", "");
-        assert_eq!(decoded.header, header);
+        assert_eq!(decoded.header.as_str(), header);
         assert_eq!(decoded.claims, claims);
         assert!(!decoded.signature_valid);
     }
