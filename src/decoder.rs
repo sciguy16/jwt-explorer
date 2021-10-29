@@ -9,7 +9,7 @@ use base64::URL_SAFE_NO_PAD;
 #[derive(Default)]
 pub struct Jwt {
     pub header: Header,
-    pub claims: String,
+    pub claims: Claims,
     pub signature: String,
     pub signature_valid: bool,
 }
@@ -76,7 +76,7 @@ pub(crate) fn decode_jwt(inp: &str, secret: &str, public_key: &str) -> Jwt {
 
     debug!("Decoding claims: {}", claims);
     match decode_base64(claims) {
-        Ok(c) => jwt.claims = format_json_string(&c),
+        Ok(c) => jwt.claims = format_json_string(&c).into(),
         Err(e) => warn!("{}", e),
     }
     debug!("Decoded: {:?}", jwt.claims);
@@ -131,7 +131,7 @@ mod test {
 
         let decoded = decode_jwt(inp, "", "");
         assert_eq!(decoded.header.as_str(), header);
-        assert_eq!(decoded.claims, claims);
+        assert_eq!(decoded.claims.as_str(), claims);
         assert!(decoded.signature_valid);
     }
 
@@ -148,7 +148,7 @@ mod test {
 
         let decoded = decode_jwt(inp, "password", "");
         assert_eq!(decoded.header.as_str(), header);
-        assert_eq!(decoded.claims, claims);
+        assert_eq!(decoded.claims.as_str(), claims);
         assert!(decoded.signature_valid);
     }
 
@@ -165,7 +165,7 @@ mod test {
 
         let decoded = decode_jwt(inp, "password", "");
         assert_eq!(decoded.header.as_str(), header);
-        assert_eq!(decoded.claims, claims);
+        assert_eq!(decoded.claims.as_str(), claims);
         assert!(!decoded.signature_valid);
     }
 }

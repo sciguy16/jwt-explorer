@@ -5,7 +5,7 @@ use anyhow::{anyhow, Result};
 use base64::URL_SAFE_NO_PAD;
 use serde_json::Value;
 
-pub fn encode_payload(header: &Header, claims: &str) -> String {
+pub fn encode_payload(header: &Header, claims: &Claims) -> String {
     // Try minifying the JSONs - if it fails due to invalid JSON syntax
     // then just b64 encode what we're given
     let encoded_header =
@@ -15,7 +15,7 @@ pub fn encode_payload(header: &Header, claims: &str) -> String {
             base64::encode_config(header, URL_SAFE_NO_PAD)
         };
     let encoded_claims =
-        if let Ok(parsed) = serde_json::from_str::<Value>(claims) {
+        if let Ok(parsed) = serde_json::from_str::<Value>(claims.as_ref()) {
             base64::encode_config(parsed.to_string(), URL_SAFE_NO_PAD)
         } else {
             base64::encode_config(claims, URL_SAFE_NO_PAD)
@@ -30,7 +30,7 @@ pub fn encode_payload(header: &Header, claims: &str) -> String {
 
 pub fn encode_and_sign(
     header: &Header,
-    claims: &str,
+    claims: &Claims,
     secret: &str,
     private_key: &str,
     original_signature: &str,
@@ -71,10 +71,10 @@ mod test {
         init();
 
         let header = "this isn't json".into();
-        let claims = "also not json";
+        let claims = "also not json".into();
         let target = "dGhpcyBpc24ndCBqc29u.YWxzbyBub3QganNvbg";
 
-        let encoded = encode_payload(&header, claims);
+        let encoded = encode_payload(&header, &claims);
         assert_eq!(encoded, target);
     }
 
@@ -89,11 +89,12 @@ mod test {
         .into();
         let claims = r#"{
     		"hello": "world"
-    	}"#;
+    	}"#
+        .into();
         let target =
             "eyJhbGciOiJub25lIiwidHlwIjoiSldUIn0.eyJoZWxsbyI6IndvcmxkIn0";
 
-        let encoded = encode_payload(&header, claims);
+        let encoded = encode_payload(&header, &claims);
         assert_eq!(encoded, target);
     }
 
@@ -108,7 +109,8 @@ mod test {
         .into();
         let claims = r#"{
     		"hello": "world"
-    	}"#;
+    	}"#
+        .into();
         let secret = "password";
         let target = concat!(
             "eyJhbGciOiJIUzM4NCIsInR5cCI6IkpXVCJ9",
@@ -120,7 +122,7 @@ mod test {
 
         let encoded = encode_and_sign(
             &header,
-            claims,
+            &claims,
             secret,
             "",
             "",

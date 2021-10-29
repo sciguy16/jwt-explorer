@@ -102,7 +102,7 @@ pub struct JwtHeader {
 struct AppState {
     jwt_input: String,
     jwt_header: Header,
-    jwt_claims: String,
+    jwt_claims: Claims,
     original_signature: String,
     secret: String,
     pubkey: String,
@@ -344,6 +344,6 @@ mod test {
         let secret = "";
         let decoded = decoder::decode_jwt(&jwt_input, secret, "");
         assert_eq!(decoded.header.as_str(), JWT_HS384_DECODED.0);
-        assert_eq!(decoded.claims, JWT_HS384_DECODED.1);
+        assert_eq!(decoded.claims.as_str(), JWT_HS384_DECODED.1);
     }
 }

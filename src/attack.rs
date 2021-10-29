@@ -10,7 +10,7 @@ pub struct Attack {
     pub token: String,
 }
 
-pub fn alg_none(claims: &str) -> Vec<Attack> {
+pub fn alg_none(claims: &Claims) -> Vec<Attack> {
     // Generate some case-changed variations on alg:none
     let variations = &["none", "None", "nOnE", "NONE"];
 
@@ -31,7 +31,7 @@ pub fn alg_none(claims: &str) -> Vec<Attack> {
     attacks
 }
 
-pub fn null_sig(header: &Header, claims: &str) -> String {
+pub fn null_sig(header: &Header, claims: &Claims) -> String {
     let mut token = encode_payload(header, claims);
     token.push('.');
     token
@@ -56,8 +56,8 @@ mod test {
     fn alg_none_attacks() {
         init();
 
-        let claims = r#"{"hello": "world"}"#;
-        let tokens = alg_none(claims);
+        let claims = r#"{"hello": "world"}"#.into();
+        let tokens = alg_none(&claims);
         let expected = &[
             Attack {
                 name: "alg:none".to_string(),

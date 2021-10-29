@@ -22,7 +22,7 @@ pub fn jwt_entry(
     secret: &mut String, // needs &mut for secret guessing attack
     public_key: &str,
     jwt_header: &mut Header,
-    jwt_claims: &mut String,
+    jwt_claims: &mut Claims,
     original_signature: &mut String,
 ) {
     ui.horizontal(|ui| {
@@ -66,7 +66,7 @@ pub fn header_and_claims(
     half_width: f32,
     half_height: f32,
     jwt_header: &mut Header,
-    jwt_claims: &mut String,
+    jwt_claims: &mut Claims,
 ) {
     ui.vertical(|ui| {
         ui.group(|ui| {
@@ -78,7 +78,9 @@ pub fn header_and_claims(
                     ui.add(
                         TextEdit::multiline(jwt_header.as_mut()).code_editor(),
                     );
-                    ui.add(TextEdit::multiline(jwt_claims).code_editor());
+                    ui.add(
+                        TextEdit::multiline(jwt_claims.as_mut()).code_editor(),
+                    );
                 });
         });
     });

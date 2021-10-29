@@ -63,7 +63,7 @@ pub fn attacks(
     ui: &mut Ui,
     attacks: &mut Vec<Attack>,
     jwt_header: &Header,
-    jwt_claims: &str,
+    jwt_claims: &Claims,
 ) {
     use crate::attack;
     ui.horizontal(|ui| {
@@ -84,7 +84,8 @@ pub fn attacks(
     });
 }
 
-pub fn iat_and_exp_time(ui: &mut Ui, jwt_claims: &mut String) {
+pub fn iat_and_exp_time(ui: &mut Ui, jwt_claims: &mut Claims) {
+    let jwt_claims = jwt_claims.as_mut();
     ui.horizontal(|ui| {
         use TimeOffset::*;
         let field = "iat";
@@ -181,7 +182,7 @@ pub fn signature_type(
 pub fn encode_and_sign(
     ui: &mut Ui,
     jwt_header: &Header,
-    jwt_claims: &str,
+    jwt_claims: &Claims,
     original_signature: &str,
     secret: &str,
     public_key: &mut String,
