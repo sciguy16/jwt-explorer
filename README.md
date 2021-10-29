@@ -39,6 +39,10 @@ Or download the latest release for your platform from [the releases page](https:
 		Leave the original header intact but don't provide a signature.
 		Make sure to try with and without the trailing dot.
 	</dd>
+	<dt>Retain original signature</dt>
+	<dd>
+		Tamper with the claims while leaving the original signature intact.
+	</dd>
 	<dt>Guess common secrets</dt>
 	<dd>
 		If the token has been signed with an HMAC then try a few common secrets.
