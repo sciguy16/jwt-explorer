@@ -1,4 +1,5 @@
 //use jwt::VerifyWithKey;
+use crate::newtypes::*;
 use crate::{
     signature::{self, SignatureClass, SignatureTypes},
     JwtHeader,
@@ -7,7 +8,7 @@ use base64::URL_SAFE_NO_PAD;
 
 #[derive(Default)]
 pub struct Jwt {
-    pub header: String,
+    pub header: Header,
     pub claims: String,
     pub signature: String,
     pub signature_valid: bool,

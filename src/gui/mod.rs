@@ -36,7 +36,7 @@ pub fn jwt_entry(
             }
             let decoded =
                 crate::decoder::decode_jwt(jwt_input, secret, public_key);
-            *jwt_header = decoded.header.into();
+            *jwt_header = decoded.header;
             *jwt_claims = decoded.claims;
             *original_signature = decoded.signature;
             if decoded.signature_valid {

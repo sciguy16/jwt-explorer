@@ -35,6 +35,6 @@ impl AsRef<str> for Header {
 
 impl AsRef<[u8]> for Header {
     fn as_ref(&self) -> &[u8] {
-        &self.0.as_bytes()
+        self.0.as_bytes()
     }
 }
