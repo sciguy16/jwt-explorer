@@ -3,15 +3,14 @@
 #![forbid(unsafe_code)]
 
 use copypasta::{ClipboardContext, ClipboardProvider};
-use eframe::egui::{self, CtxRef, FontDefinitions, FontFamily, Pos2};
-use eframe::epi::{self, Frame, Storage};
+use eframe::egui::{self, FontData, FontDefinitions, FontFamily, Pos2};
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use simplelog::{
     ColorChoice, CombinedLogger, LevelFilter, TermLogger, TerminalMode,
     WriteLogger,
 };
-use std::borrow::Cow;
+
 use std::io::{self, Write};
 use std::sync::{Arc, RwLock};
 
@@ -144,49 +143,44 @@ impl Clipboard {
     }
 }
 
-impl epi::App for AppState {
-    fn name(&self) -> &str {
-        &WINDOW_TITLE
-    }
-
-    fn setup(
-        &mut self,
-        ctx: &CtxRef,
-        _frame: &mut Frame<'_>,
-        _storage: Option<&dyn Storage>,
-    ) {
+impl AppState {
+    fn new(cc: &eframe::CreationContext<'_>) -> Self {
         let mut fonts = FontDefinitions::default();
 
         fonts.font_data.insert(
             "Liberation Mono".to_string(),
-            Cow::Borrowed(include_bytes!(concat!(
+            FontData::from_static(include_bytes!(concat!(
                 "../fonts/liberation-mono/",
                 "LiberationMono-Regular.ttf"
             ))),
         );
         fonts
-            .fonts_for_family
+            .families
             .get_mut(&FontFamily::Monospace)
             .unwrap()
             .insert(0, "Liberation Mono".to_string());
 
         fonts.font_data.insert(
             "Liberation Serif".to_string(),
-            Cow::Borrowed(include_bytes!(concat!(
+            FontData::from_static(include_bytes!(concat!(
                 "../fonts/liberation-serif/",
                 "LiberationSerif-Regular.ttf"
             ))),
         );
         fonts
-            .fonts_for_family
+            .families
             .get_mut(&FontFamily::Proportional)
             .unwrap()
             .insert(0, "Liberation Serif".to_string());
 
-        ctx.set_fonts(fonts);
-    }
+        cc.egui_ctx.set_fonts(fonts);
 
-    fn update(&mut self, ctx: &egui::CtxRef, _frame: &mut epi::Frame<'_>) {
+        Self::default()
+    }
+}
+
+impl eframe::App for AppState {
+    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         let Self {
             jwt_input,
             jwt_header,
@@ -303,8 +297,14 @@ pub fn main() {
         WriteLogger::new(LevelFilter::Info, write_logger_config, LOG.clone()),
     ]);
 
-    let options = eframe::NativeOptions::default();
-    eframe::run_native(Box::new(AppState::default()), options);
+    let native_options = eframe::NativeOptions::default();
+    eframe::run_native(
+        &WINDOW_TITLE,
+        native_options,
+        Box::new(|cc| Box::new(AppState::new(cc))),
+    );
+    // let options = eframe::NativeOptions::default();
+    // eframe::run_native(Box::new(AppState::default()), options);
 }
 
 #[cfg(test)]

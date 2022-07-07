@@ -1,7 +1,7 @@
 use crate::newtypes::*;
 use crate::{Attack, Clipboard, LOG};
 use eframe::egui::{
-    self, Button, Color32, ScrollArea, TextEdit, TextStyle, Ui,
+    self, Button, Color32, RichText, ScrollArea, TextEdit, TextStyle, Ui,
 };
 
 pub mod controls;
@@ -27,9 +27,7 @@ pub fn jwt_entry(
 ) {
     ui.horizontal(|ui| {
         ui.label("JWT: ");
-        ui.add(
-            TextEdit::singleline(jwt_input).text_style(TextStyle::Monospace),
-        );
+        ui.add(TextEdit::singleline(jwt_input).font(TextStyle::Monospace));
         if ui.button("Decode").clicked() {
             if secret.is_empty() {
                 crate::attack::try_some_common_secrets(jwt_input, secret);
@@ -93,9 +91,9 @@ pub(crate) fn attack_list(
 ) {
     ui.horizontal(|ui| {
         ui.label("Generated attack payloads:");
-        let copy_button = Button::new("Copy all")
-            .fill(Color32::from_rgb(0, 0, 0xc0))
-            .text_color(Color32::WHITE);
+        let copy_button =
+            Button::new(RichText::new("Copy all").color(Color32::WHITE))
+                .fill(Color32::from_rgb(0, 0, 0xc0));
         if ui.add(copy_button).clicked() {
             let cap: usize = attacks.iter().map(|a| a.token.len()).sum();
             let mut tokenlist = String::with_capacity(cap + attacks.len());
@@ -106,9 +104,9 @@ pub(crate) fn attack_list(
 
             clipboard.put(&tokenlist);
         }
-        let clear_button = Button::new("Clear")
-            .fill(Color32::from_rgb(0xa0, 0, 0))
-            .text_color(Color32::WHITE);
+        let clear_button =
+            Button::new(RichText::new("Clear").color(Color32::WHITE))
+                .fill(Color32::from_rgb(0xa0, 0, 0));
         if ui.add(clear_button).clicked() {
             info!("Deleted {} attacks", attacks.len());
             attacks.clear();
@@ -128,15 +126,17 @@ pub(crate) fn attack_list(
             const DELETE_TOKEN_MAGIC_VALUE: &str = "MARKED_FOR_DELETION";
             for atk in attacks.get_mut(row_range).unwrap_or_default() {
                 ui.horizontal(|ui| {
-                    let copy_button = Button::new("Copy")
-                        .fill(Color32::from_rgb(0, 0, 0xc0))
-                        .text_color(Color32::WHITE);
+                    let copy_button = Button::new(
+                        RichText::new("Copy").color(Color32::WHITE),
+                    )
+                    .fill(Color32::from_rgb(0, 0, 0xc0));
                     if ui.add(copy_button).clicked() {
                         clipboard.put(&atk.token);
                     }
-                    let delete_button = Button::new("Delete")
-                        .fill(Color32::from_rgb(0xa0, 0, 0))
-                        .text_color(Color32::WHITE);
+                    let delete_button = Button::new(
+                        RichText::new("Delete").color(Color32::WHITE),
+                    )
+                    .fill(Color32::from_rgb(0xa0, 0, 0));
                     if ui.add(delete_button).clicked() {
                         atk.token = DELETE_TOKEN_MAGIC_VALUE.to_string();
                     }
@@ -144,7 +144,7 @@ pub(crate) fn attack_list(
                     ui.add_sized(
                         ui.available_size(),
                         egui::TextEdit::singleline(&mut atk.token)
-                            .text_style(TextStyle::Monospace),
+                            .font(TextStyle::Monospace),
                     );
                 });
             }
@@ -156,17 +156,16 @@ pub(crate) fn attack_list(
 pub fn log_list(ui: &mut Ui) {
     ui.horizontal(|ui| {
         ui.label("Log");
-        let clear_button = Button::new("Clear")
-            .fill(Color32::from_rgb(0xa0, 0, 0))
-            .text_color(Color32::WHITE);
+        let clear_button =
+            Button::new(RichText::new("Clear").color(Color32::WHITE))
+                .fill(Color32::from_rgb(0xa0, 0, 0));
         if ui.add(clear_button).clicked() {
             LOG.clear();
         }
     });
     ui.add_space(4.0);
 
-    let text_style = TextStyle::Body;
-    let row_height = ui.fonts()[text_style].row_height();
+    let row_height = 10.0;
     let num_rows = LOG.len();
 
     ScrollArea::vertical().id_source("logs").show_rows(

@@ -1,4 +1,4 @@
-use eframe::egui::{self, Label, TextEdit, TextStyle, Ui};
+use eframe::egui::{self, Label, RichText, TextEdit, TextStyle, Ui};
 use std::time::Duration;
 use strum::IntoEnumIterator;
 
@@ -12,8 +12,7 @@ pub fn secret(ui: &mut Ui, secret: &mut Secret) {
     ui.horizontal(|ui| {
         ui.label("Secret: ");
         ui.add(
-            TextEdit::singleline(secret.as_mut())
-                .text_style(TextStyle::Monospace),
+            TextEdit::singleline(secret.as_mut()).font(TextStyle::Monospace),
         );
     });
 }
@@ -92,7 +91,9 @@ pub fn iat_and_exp_time(ui: &mut Ui, jwt_claims: &mut Claims) {
     ui.horizontal(|ui| {
         use TimeOffset::*;
         let field = "iat";
-        ui.add(Label::new("iat:").text_style(TextStyle::Monospace));
+        ui.add(Label::new(
+            RichText::new("iat:").text_style(TextStyle::Monospace),
+        ));
         if ui.button("-24h").clicked() {
             log_err!(update_time(
                 jwt_claims,
@@ -125,7 +126,9 @@ pub fn iat_and_exp_time(ui: &mut Ui, jwt_claims: &mut Claims) {
     ui.horizontal(|ui| {
         use TimeOffset::*;
         let field = "exp";
-        ui.add(Label::new("exp:").text_style(TextStyle::Monospace));
+        ui.add(Label::new(
+            RichText::new("exp:").text_style(TextStyle::Monospace),
+        ));
         if ui.button("-24h").clicked() {
             log_err!(update_time(
                 jwt_claims,

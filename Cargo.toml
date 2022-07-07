@@ -13,8 +13,8 @@ authors = ["David Young"]
 [dependencies]
 anyhow = "1.0"
 base64 = "0.13"
-copypasta = "0.7"
-eframe = "0.15"
+copypasta = "0.8"
+eframe = "0.18"
 hmac = "0.11"
 lazy_static = "1.4"
 log = "0.4"
