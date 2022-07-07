@@ -1191,9 +1191,9 @@ dependencies = [
 
 [[package]]
 name = "openssl-src"
-version = "300.0.7+3.0.3"
+version = "300.0.9+3.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f0e85632b936bdfd145e98385e90da446b0574485d53be5627ebb9eeece0fa2"
+checksum = "df52116687e2d276515a1cbf0b84d2fb646f519aebe65d2fa82f28c5d078f174"
 dependencies = [
  "cc",
 ]
