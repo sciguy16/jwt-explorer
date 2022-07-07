@@ -1,6 +1,6 @@
 use anyhow::{anyhow, bail, Result};
 use base64::URL_SAFE_NO_PAD;
-use hmac::{Hmac, Mac, NewMac};
+use hmac::{Hmac, Mac};
 use openssl::bn::BigNum;
 use openssl::ec::{EcGroup, EcKey};
 use openssl::ecdsa::EcdsaSig;
