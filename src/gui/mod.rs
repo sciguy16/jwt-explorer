@@ -174,9 +174,9 @@ pub fn log_list(ui: &mut Ui) {
         row_height,
         num_rows,
         |ui, row_range| {
-            for row in
-                LOG.inner.read().unwrap().get(row_range).unwrap_or_default()
-            {
+            let log = LOG.inner.read().unwrap();
+            let rows = log.get(row_range).unwrap_or_default();
+            for row in rows {
                 ui.label(row);
             }
         },

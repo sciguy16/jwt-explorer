@@ -4,7 +4,7 @@ use crate::newtypes::*;
 
 const COMMON_SECRETS: &[&str] = &["secret", "password", "1234", "1234567890"];
 
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Clone, Debug, Default, Eq, PartialEq)]
 pub struct Attack {
     pub name: String,
     pub token: String,
