@@ -13,6 +13,7 @@ authors = ["David Young"]
 [dependencies]
 anyhow = "1.0"
 base64 = "0.13"
+chrono = { version = "0.4", features = ["serde"] }
 copypasta = "0.8"
 eframe = "0.18"
 hmac = "0.12"

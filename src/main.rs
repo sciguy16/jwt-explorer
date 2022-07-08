@@ -111,6 +111,10 @@ struct AppState {
     attacks: Vec<Attack>,
     win_size: Pos2,
     clipboard: Clipboard,
+    iat_string: String,
+    iat_ok: bool,
+    exp_string: String,
+    exp_ok: bool,
 }
 
 #[derive(Clone, Default)]
@@ -194,6 +198,10 @@ impl eframe::App for AppState {
             attacks,
             win_size,
             clipboard,
+            iat_string,
+            iat_ok,
+            exp_string,
+            exp_ok,
         } = self;
 
         egui::CentralPanel::default().show(ctx, |ui| {
@@ -206,6 +214,10 @@ impl eframe::App for AppState {
                 jwt_header,
                 jwt_claims,
                 original_signature,
+                iat_string,
+                iat_ok,
+                exp_string,
+                exp_ok,
             );
 
             let half_width = ui.available_width() / 2.0;
@@ -239,7 +251,10 @@ impl eframe::App for AppState {
                         gui::controls::attacks(
                             ui, attacks, jwt_header, jwt_claims,
                         );
-                        gui::controls::iat_and_exp_time(ui, jwt_claims);
+                        gui::controls::iat_and_exp_time(
+                            ui, jwt_claims, iat_string, iat_ok, exp_string,
+                            exp_ok,
+                        );
                         gui::controls::signature_type(
                             ui,
                             signature_type,

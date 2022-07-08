@@ -5,6 +5,13 @@ use crate::{
     JwtHeader,
 };
 use base64::URL_SAFE_NO_PAD;
+use serde::Deserialize;
+
+#[derive(Default, Deserialize)]
+pub struct IatAndExp {
+    pub iat: i64,
+    pub exp: i64,
+}
 
 #[derive(Default)]
 pub struct Jwt {
@@ -12,6 +19,7 @@ pub struct Jwt {
     pub claims: Claims,
     pub signature: String,
     pub signature_valid: bool,
+    pub times: Option<IatAndExp>,
 }
 
 pub(crate) fn decode_jwt(
@@ -84,6 +92,15 @@ pub(crate) fn decode_jwt(
         Err(e) => warn!("{}", e),
     }
     debug!("Decoded: {:?}", jwt.claims);
+
+    debug!("Decoding iat & exp times");
+
+    // Try to parse the jwt claims string into a json object
+    if let Ok(times) = serde_json::from_str::<IatAndExp>(jwt.claims.as_ref()) {
+        jwt.times = Some(times);
+    } else {
+        error!("Can't decode times from {claims}");
+    }
 
     jwt
 }

@@ -1,5 +1,6 @@
 use crate::newtypes::*;
 use crate::{Attack, Clipboard, LOG};
+use chrono::{DateTime, NaiveDateTime, Utc};
 use eframe::egui::{
     self, Button, Color32, RichText, ScrollArea, TextEdit, TextStyle, Ui,
 };
@@ -24,6 +25,10 @@ pub fn jwt_entry(
     jwt_header: &mut Header,
     jwt_claims: &mut Claims,
     original_signature: &mut String,
+    iat: &mut String,
+    iat_ok: &mut bool,
+    exp: &mut String,
+    exp_ok: &mut bool,
 ) {
     ui.horizontal(|ui| {
         ui.label("JWT: ");
@@ -41,6 +46,22 @@ pub fn jwt_entry(
                 info!("Valid signature!");
             } else {
                 info!("Signature verification failed");
+            }
+
+            // set iat and exp strings
+            if let Some(times) = decoded.times {
+                *iat = DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(times.iat, 0),
+                    Utc,
+                )
+                .to_string();
+                *exp = DateTime::<Utc>::from_utc(
+                    NaiveDateTime::from_timestamp(times.exp, 0),
+                    Utc,
+                )
+                .to_string();
+                *iat_ok = true;
+                *exp_ok = true;
             }
         }
         if ui.button("Demo").clicked() {

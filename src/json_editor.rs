@@ -7,6 +7,7 @@ use crate::signature::SignatureTypes;
 pub enum TimeOffset {
     Plus(Duration),
     Minus(Duration),
+    Absolute(u64),
 }
 
 #[derive(Clone, Copy)]
@@ -156,19 +157,25 @@ pub fn update_time(
 ) -> Result<(), &'static str> {
     use TimeOffset::*;
 
-    let now_plus_24h = SystemTime::now();
-    let now_plus_24h = match offset {
-        Plus(offset) => now_plus_24h.checked_add(offset),
-        Minus(offset) => now_plus_24h.checked_sub(offset),
+    let now = SystemTime::now();
+    let new_ts = match offset {
+        Plus(offset) => now
+            .checked_add(offset)
+            .expect("Time calculation error")
+            .duration_since(UNIX_EPOCH)
+            .expect("Negative time somehow")
+            .as_secs(),
+        Minus(offset) => now
+            .checked_sub(offset)
+            .expect("Time calculation error")
+            .duration_since(UNIX_EPOCH)
+            .expect("Negative time somehow")
+            .as_secs(),
+        Absolute(new_ts) => new_ts,
     };
-    let now_plus_24h = now_plus_24h
-        .expect("Time calculation error")
-        .duration_since(UNIX_EPOCH)
-        .expect("Negative time somehow")
-        .as_secs();
 
     // Try to replace the given field with the calculated value
-    replace_field(json, field, now_plus_24h)
+    replace_field(json, field, new_ts)
 }
 
 pub fn update_alg(

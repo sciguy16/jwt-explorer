@@ -1,12 +1,13 @@
-use eframe::egui::{self, Label, RichText, TextEdit, TextStyle, Ui};
-use std::time::Duration;
-use strum::IntoEnumIterator;
-
 use crate::attack::Attack;
+use crate::decoder::IatAndExp;
 use crate::json_editor::{update_alg, update_time, TimeOffset};
 use crate::log_err;
 use crate::newtypes::*;
 use crate::signature::{generate_keypair, SignatureClass, SignatureTypes};
+use chrono::{DateTime, FixedOffset, NaiveDateTime, Utc};
+use eframe::egui::{self, Color32, Label, RichText, TextEdit, TextStyle, Ui};
+use std::time::Duration;
+use strum::IntoEnumIterator;
 
 pub fn secret(ui: &mut Ui, secret: &mut Secret) {
     ui.horizontal(|ui| {
@@ -86,78 +87,182 @@ pub fn attacks(
     });
 }
 
-pub fn iat_and_exp_time(ui: &mut Ui, jwt_claims: &mut Claims) {
+// Clippy doesn't like the &mut String, even though it's necessary for
+// the egui TextEdit
+#[allow(clippy::ptr_arg)]
+pub fn iat_and_exp_time(
+    ui: &mut Ui,
+    jwt_claims: &mut Claims,
+    iat: &mut String,
+    iat_ok: &mut bool,
+    exp: &mut String,
+    exp_ok: &mut bool,
+) {
+    use TimeOffset::*;
+
     let jwt_claims = jwt_claims.as_mut();
-    ui.horizontal(|ui| {
-        use TimeOffset::*;
+    let mut recalculate_iat_and_exp = false;
+
+    ui.add_space(10.0);
+    {
         let field = "iat";
-        ui.add(Label::new(
-            RichText::new("iat:").text_style(TextStyle::Monospace),
-        ));
-        if ui.button("-24h").clicked() {
-            log_err!(update_time(
-                jwt_claims,
-                field,
-                Minus(Duration::from_secs(60 * 60 * 24)),
+        // Issued-at time
+        ui.horizontal(|ui| {
+            ui.add(Label::new(
+                RichText::new("iat:").text_style(TextStyle::Monospace),
             ));
-        }
-        if ui.button("+24h").clicked() {
-            log_err!(update_time(
-                jwt_claims,
-                field,
-                Plus(Duration::from_secs(60 * 60 * 24)),
+            let response = ui.add({
+                TextEdit::singleline(iat).text_color(if *iat_ok {
+                    Color32::BLACK
+                } else {
+                    Color32::RED
+                })
+            });
+            if response.changed() {
+                *iat_ok = false;
+                if let Ok(new_ts) = iat.parse::<DateTime<FixedOffset>>() {
+                    if let Ok(new_ts) = new_ts.timestamp().try_into() {
+                        log_err!(update_time(
+                            jwt_claims,
+                            field,
+                            Absolute(new_ts),
+                        ));
+                        *iat_ok = true;
+                    }
+                }
+            }
+        });
+
+        ui.horizontal(|ui| {
+            // spacing so that buttons line up with text box
+            ui.add(Label::new(
+                RichText::new("    ").text_style(TextStyle::Monospace),
             ));
-        }
-        if ui.button("+7d").clicked() {
-            log_err!(update_time(
-                jwt_claims,
-                field,
-                Plus(Duration::from_secs(60 * 60 * 24 * 7)),
-            ));
-        }
-        if ui.button("+365d").clicked() {
-            log_err!(update_time(
-                jwt_claims,
-                field,
-                Plus(Duration::from_secs(60 * 60 * 24 * 365)),
-            ));
-        }
-    });
-    ui.horizontal(|ui| {
-        use TimeOffset::*;
+
+            if ui.button("-24h").clicked() {
+                log_err!(update_time(
+                    jwt_claims,
+                    field,
+                    Minus(Duration::from_secs(60 * 60 * 24)),
+                ));
+                recalculate_iat_and_exp = true;
+            }
+            if ui.button("+24h").clicked() {
+                log_err!(update_time(
+                    jwt_claims,
+                    field,
+                    Plus(Duration::from_secs(60 * 60 * 24)),
+                ));
+                recalculate_iat_and_exp = true;
+            }
+            if ui.button("+7d").clicked() {
+                log_err!(update_time(
+                    jwt_claims,
+                    field,
+                    Plus(Duration::from_secs(60 * 60 * 24 * 7)),
+                ));
+                recalculate_iat_and_exp = true;
+            }
+            if ui.button("+365d").clicked() {
+                log_err!(update_time(
+                    jwt_claims,
+                    field,
+                    Plus(Duration::from_secs(60 * 60 * 24 * 365)),
+                ));
+                recalculate_iat_and_exp = true;
+            }
+        });
+    }
+
+    ui.add_space(10.0);
+
+    // Expiry time
+    {
         let field = "exp";
-        ui.add(Label::new(
-            RichText::new("exp:").text_style(TextStyle::Monospace),
-        ));
-        if ui.button("-24h").clicked() {
-            log_err!(update_time(
-                jwt_claims,
-                field,
-                Minus(Duration::from_secs(60 * 60 * 24)),
+        ui.horizontal(|ui| {
+            ui.add(Label::new(
+                RichText::new("exp:").text_style(TextStyle::Monospace),
             ));
-        }
-        if ui.button("+24h").clicked() {
-            log_err!(update_time(
-                jwt_claims,
-                field,
-                Plus(Duration::from_secs(60 * 60 * 24)),
+            let response = ui.add({
+                TextEdit::singleline(exp).text_color(if *exp_ok {
+                    Color32::BLACK
+                } else {
+                    Color32::RED
+                })
+            });
+            if response.changed() {
+                *exp_ok = false;
+                if let Ok(new_ts) = exp.parse::<DateTime<FixedOffset>>() {
+                    if let Ok(new_ts) = new_ts.timestamp().try_into() {
+                        log_err!(update_time(
+                            jwt_claims,
+                            field,
+                            Absolute(new_ts),
+                        ));
+                        *exp_ok = true;
+                    }
+                }
+            }
+        });
+
+        ui.horizontal(|ui| {
+            ui.add(Label::new(
+                RichText::new("    ").text_style(TextStyle::Monospace),
             ));
+
+            if ui.button("-24h").clicked() {
+                log_err!(update_time(
+                    jwt_claims,
+                    field,
+                    Minus(Duration::from_secs(60 * 60 * 24)),
+                ));
+                recalculate_iat_and_exp = true;
+            }
+            if ui.button("+24h").clicked() {
+                log_err!(update_time(
+                    jwt_claims,
+                    field,
+                    Plus(Duration::from_secs(60 * 60 * 24)),
+                ));
+                recalculate_iat_and_exp = true;
+            }
+            if ui.button("+7d").clicked() {
+                log_err!(update_time(
+                    jwt_claims,
+                    field,
+                    Plus(Duration::from_secs(60 * 60 * 24 * 7)),
+                ));
+                recalculate_iat_and_exp = true;
+            }
+            if ui.button("+365d").clicked() {
+                log_err!(update_time(
+                    jwt_claims,
+                    field,
+                    Plus(Duration::from_secs(60 * 60 * 24 * 365)),
+                ));
+                recalculate_iat_and_exp = true;
+            }
+        });
+    }
+
+    if recalculate_iat_and_exp {
+        if let Ok(times) = serde_json::from_str::<IatAndExp>(jwt_claims) {
+            *iat = DateTime::<Utc>::from_utc(
+                NaiveDateTime::from_timestamp(times.iat, 0),
+                Utc,
+            )
+            .to_string();
+            *exp = DateTime::<Utc>::from_utc(
+                NaiveDateTime::from_timestamp(times.exp, 0),
+                Utc,
+            )
+            .to_string();
+            *iat_ok = true;
+            *exp_ok = true;
         }
-        if ui.button("+7d").clicked() {
-            log_err!(update_time(
-                jwt_claims,
-                field,
-                Plus(Duration::from_secs(60 * 60 * 24 * 7)),
-            ));
-        }
-        if ui.button("+365d").clicked() {
-            log_err!(update_time(
-                jwt_claims,
-                field,
-                Plus(Duration::from_secs(60 * 60 * 24 * 365)),
-            ));
-        }
-    });
+    }
+
+    ui.add_space(10.0);
 }
 
 pub fn signature_type(
