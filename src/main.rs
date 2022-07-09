@@ -43,6 +43,8 @@ lazy_static! {
     static ref BUILD_HEADER: String = format!("v{} ({})", VERSION, *BUILD_DATE);
 }
 
+const DEFAULT_DISPLAY_SCALE_OPTIONS: &[f32] = &[1.0, 1.5, 2.0];
+
 #[macro_export]
 macro_rules! log_err {
     ($res:expr) => {
@@ -120,6 +122,8 @@ struct AppState {
     exp_string: String,
     exp_ok: bool,
     update_status: Option<UpdateStatus>,
+    display_scales: Vec<f32>,
+    display_scale_selected_idx: usize,
 }
 
 #[derive(Clone, Default)]
@@ -185,14 +189,36 @@ impl AppState {
         cc.egui_ctx.set_fonts(fonts);
         cc.egui_ctx.set_visuals(egui::Visuals::dark());
 
-        Self::default()
+        AppState::default()
     }
 }
 
 impl eframe::App for AppState {
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
+        // Have to read the default display scaling here rather than in
+        // the AppState::new() method because at that point the window
+        // has not been created
+        if self.display_scales.is_empty() {
+            let px_per_pt = ctx.pixels_per_point();
+            dbg!(px_per_pt);
+            self.display_scales
+                .reserve_exact(1 + DEFAULT_DISPLAY_SCALE_OPTIONS.len());
+
+            self.display_scales
+                .extend_from_slice(DEFAULT_DISPLAY_SCALE_OPTIONS);
+            match DEFAULT_DISPLAY_SCALE_OPTIONS.binary_search_by(|a| {
+                a.partial_cmp(&px_per_pt).expect("Tried to cmp NaN")
+            }) {
+                Ok(found_idx) => self.display_scale_selected_idx = found_idx,
+                Err(insert_idx) => {
+                    self.display_scales.insert(insert_idx, px_per_pt);
+                    self.display_scale_selected_idx = insert_idx;
+                }
+            }
+        }
+
         egui::CentralPanel::default().show(ctx, |ui| {
-            gui::header(ui, self);
+            gui::header(ui, self, ctx);
             gui::jwt_entry(ui, self);
 
             let half_width = ui.available_width() / 2.0;

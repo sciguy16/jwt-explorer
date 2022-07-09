@@ -13,7 +13,7 @@ fn copy_button(ui: &mut Ui, clipboard: &mut Clipboard, content: &str) {
     }
 }
 
-pub(crate) fn header(ui: &mut Ui, state: &mut AppState) {
+pub(crate) fn header(ui: &mut Ui, state: &mut AppState, ctx: &egui::Context) {
     ui.horizontal(|ui| {
         ui.heading("JWT Explorer ");
         ui.label(&*crate::BUILD_HEADER);
@@ -56,6 +56,31 @@ pub(crate) fn header(ui: &mut Ui, state: &mut AppState) {
                     error!("Failed to fetch latest release information: {e}");
                 }
             }
+        }
+
+        ui.label("Scale:");
+        egui::ComboBox::from_label("")
+            .selected_text(
+                state
+                    .display_scales
+                    .get(state.display_scale_selected_idx)
+                    .map(|s| s.to_string())
+                    .unwrap_or_else(String::new),
+            )
+            .show_ui(ui, |ui| {
+                for (idx, scale) in state.display_scales.iter().enumerate() {
+                    ui.selectable_value(
+                        &mut state.display_scale_selected_idx,
+                        idx,
+                        &scale.to_string(),
+                    );
+                }
+            });
+        if let Some(px_per_pt) =
+            state.display_scales.get(state.display_scale_selected_idx)
+        {
+            ctx.set_pixels_per_point(*px_per_pt);
+            ctx.request_repaint();
         }
     });
 
