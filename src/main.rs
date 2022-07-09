@@ -201,6 +201,8 @@ impl eframe::App for AppState {
                 gui::header_and_claims(ui, half_width, half_height, self);
                 ui.vertical(|ui| {
                     ui.group(|ui| {
+                        ui.set_min_height(half_height);
+                        ui.set_width(ui.available_width());
                         // Controls
                         match self.signature_type.class(&self.jwt_header) {
                             SignatureClass::Hmac => {
@@ -224,7 +226,7 @@ impl eframe::App for AppState {
             ui.horizontal(|ui| {
                 ui.vertical(|ui| {
                     ui.group(|ui| {
-                        ui.set_max_width(half_width);
+                        ui.set_width(half_width);
                         ui.set_min_height(half_height);
                         gui::attack_list(
                             ui,
@@ -236,6 +238,7 @@ impl eframe::App for AppState {
                 ui.vertical(|ui| {
                     ui.group(|ui| {
                         ui.set_min_height(half_height);
+                        ui.set_width(ui.available_width());
                         gui::log_list(ui);
                     });
                 });

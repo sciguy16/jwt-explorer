@@ -126,18 +126,20 @@ pub(crate) fn header_and_claims(
 ) {
     ui.vertical(|ui| {
         ui.group(|ui| {
-            ui.set_max_width(half_width);
+            ui.set_width(half_width);
             ui.set_min_height(half_height);
             ScrollArea::vertical()
                 .id_source("jwt_header")
                 .show(ui, |ui| {
                     ui.add(
                         TextEdit::multiline(state.jwt_header.as_mut())
-                            .code_editor(),
+                            .code_editor()
+                            .desired_width(ui.available_width()),
                     );
                     ui.add(
                         TextEdit::multiline(state.jwt_claims.as_mut())
-                            .code_editor(),
+                            .code_editor()
+                            .desired_width(ui.available_width()),
                     );
                 });
         });

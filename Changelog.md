@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 * Set default window size to 1280x1024
+* GUI elements now fill the width of the window
 
 ### Deprecated
 
