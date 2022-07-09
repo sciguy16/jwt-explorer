@@ -178,6 +178,7 @@ impl AppState {
             .insert(0, "Liberation Serif".to_string());
 
         cc.egui_ctx.set_fonts(fonts);
+        cc.egui_ctx.set_visuals(egui::Visuals::dark());
 
         Self::default()
     }

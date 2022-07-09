@@ -12,6 +12,7 @@ pub fn header(ui: &mut Ui) {
         ui.heading("JWT Explorer ");
         ui.label(&*crate::BUILD_HEADER);
         ui.hyperlink("https://github.com/sciguy16/jwt-explorer");
+        egui::widgets::global_dark_light_mode_buttons(ui);
     });
     ui.label("Hint: pop the JWT into Hashcat to check for weak keys");
 }
