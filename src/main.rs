@@ -7,7 +7,7 @@ use eframe::egui::{
     self, Event, FontData, FontDefinitions, FontFamily, Key, Pos2,
 };
 use lazy_static::lazy_static;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use simplelog::{
     ColorChoice, CombinedLogger, LevelFilter, TermLogger, TerminalMode,
     WriteLogger,
@@ -42,6 +42,7 @@ lazy_static! {
         format!("JWT Explorer - {}, built on {}", VERSION, *BUILD_DATE);
     static ref BUILD_HEADER: String = format!("v{} ({})", VERSION, *BUILD_DATE);
 }
+const WINDOW_TITLE_SHORT: &str = "JWT Explorer";
 
 const DEFAULT_DISPLAY_SCALE_OPTIONS: &[f32] = &[1.0, 1.5, 2.0];
 
@@ -103,27 +104,46 @@ pub struct JwtHeader {
     typ: Option<String>,
 }
 
-#[derive(Default)]
+#[derive(Default, Deserialize, Serialize)]
+#[serde(default)]
 struct AppState {
+    #[serde(skip)]
     jwt_input: String,
+    #[serde(skip)]
     jwt_header: Header,
+    #[serde(skip)]
     jwt_claims: Claims,
+    #[serde(skip)]
     original_signature: String,
+    #[serde(skip)]
     secret: Secret,
+    #[serde(skip)]
     pubkey: PubKey,
+    #[serde(skip)]
     privkey: PrivKey,
+    #[serde(skip)]
     keypair_display_state: gui::controls::KeyPairDisplayState,
+    #[serde(skip)]
     signature_type: SignatureTypes,
+    #[serde(skip)]
     attacks: Vec<Attack>,
+    #[serde(skip)]
     win_size: Pos2,
+    #[serde(skip)]
     clipboard: Clipboard,
+    #[serde(skip)]
     iat_string: String,
+    #[serde(skip)]
     iat_ok: bool,
+    #[serde(skip)]
     exp_string: String,
+    #[serde(skip)]
     exp_ok: bool,
+    #[serde(skip)]
     update_status: Option<UpdateStatus>,
     display_scales: Vec<f32>,
     display_scale_selected_idx: usize,
+    light_theme: bool,
 }
 
 #[derive(Clone, Default)]
@@ -187,13 +207,27 @@ impl AppState {
             .insert(0, "Liberation Serif".to_string());
 
         cc.egui_ctx.set_fonts(fonts);
-        cc.egui_ctx.set_visuals(egui::Visuals::dark());
 
-        AppState::default()
+        // Load previous app state (if any).
+        let state = if let Some(storage) = cc.storage {
+            eframe::get_value(storage, eframe::APP_KEY).unwrap_or_default()
+        } else {
+            AppState::default()
+        };
+
+        if !state.light_theme {
+            cc.egui_ctx.set_visuals(egui::Visuals::dark());
+        }
+
+        state
     }
 }
 
 impl eframe::App for AppState {
+    fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        eframe::set_value(storage, eframe::APP_KEY, self);
+    }
+
     fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         // Have to read the default display scaling here rather than in
         // the AppState::new() method because at that point the window
@@ -218,6 +252,11 @@ impl eframe::App for AppState {
         }
 
         egui::CentralPanel::default().show(ctx, |ui| {
+            // store the dark/light theme state in the AppState. There's
+            // probably a better place for this than every event loop, but
+            // it works for now
+            self.light_theme = !ui.visuals_mut().dark_mode;
+
             gui::header(ui, self, ctx);
             gui::jwt_entry(ui, self);
 
@@ -311,7 +350,7 @@ pub fn main() {
         ..Default::default()
     };
     eframe::run_native(
-        &WINDOW_TITLE,
+        WINDOW_TITLE_SHORT,
         native_options,
         Box::new(|cc| Box::new(AppState::new(cc))),
     );

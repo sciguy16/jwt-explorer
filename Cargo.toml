@@ -16,7 +16,7 @@ base64 = "0.13"
 chrono = { version = "0.4", features = ["serde"] }
 copypasta = "0.8"
 csv = "1"
-eframe = "0.18"
+eframe = { version = "0.18", features = ["persistence"] }
 hmac = "0.12"
 lazy_static = "1.4"
 log = "0.4"

@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Added more copy buttons around the UI
 * Exit on ctrl+Q
 * Added interface scaling options
+* Persist UI scaling and dark/light mode selection
 
 ### Changed
 * Set default window size to 1280x1024
