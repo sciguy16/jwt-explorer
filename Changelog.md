@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 * Added editable human-readable versions of `iat` and `exp` fields
 * Added dark/light theme switcher
+* Added update checking button
 
 ### Changed
 * Set default window size to 1280x1024

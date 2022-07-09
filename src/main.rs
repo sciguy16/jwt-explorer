@@ -25,10 +25,12 @@ mod json_editor;
 mod json_formatter;
 mod newtypes;
 mod signature;
+mod update_checker;
 
 use attack::Attack;
 use newtypes::*;
 use signature::{SignatureClass, SignatureTypes};
+use update_checker::UpdateStatus;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 lazy_static! {
@@ -115,6 +117,7 @@ struct AppState {
     iat_ok: bool,
     exp_string: String,
     exp_ok: bool,
+    update_status: Option<UpdateStatus>,
 }
 
 #[derive(Clone, Default)]
@@ -203,10 +206,11 @@ impl eframe::App for AppState {
             iat_ok,
             exp_string,
             exp_ok,
+            update_status,
         } = self;
 
         egui::CentralPanel::default().show(ctx, |ui| {
-            gui::header(ui);
+            gui::header(ui, update_status);
             gui::jwt_entry(
                 ui,
                 jwt_input,

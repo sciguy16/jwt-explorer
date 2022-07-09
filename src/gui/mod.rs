@@ -1,4 +1,5 @@
 use crate::newtypes::*;
+use crate::update_checker::{check_up_to_date, UpdateStatus};
 use crate::{Attack, Clipboard, LOG};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use eframe::egui::{
@@ -7,12 +8,52 @@ use eframe::egui::{
 
 pub mod controls;
 
-pub fn header(ui: &mut Ui) {
+// Button::new(RichText::new("Copy all").color(Color32::WHITE))
+// .fill(Color32::from_rgb(0, 0, 0xc0));
+
+pub fn header(ui: &mut Ui, update_status: &mut Option<UpdateStatus>) {
     ui.horizontal(|ui| {
         ui.heading("JWT Explorer ");
         ui.label(&*crate::BUILD_HEADER);
         ui.hyperlink("https://github.com/sciguy16/jwt-explorer");
         egui::widgets::global_dark_light_mode_buttons(ui);
+
+        let update_button = match update_status {
+            None => Button::new("Check for updates"),
+            Some(UpdateStatus::Ok) => {
+                Button::new(RichText::new("Up to date!").color(Color32::BLACK))
+                    .fill(Color32::GREEN)
+            }
+            Some(UpdateStatus::NeedsUpdate(latest)) => Button::new(
+                RichText::new(&format!(
+                    "Update available ({})",
+                    latest.tag_name
+                ))
+                .color(Color32::BLACK),
+            )
+            .fill(Color32::RED),
+        };
+        if ui.add(update_button).clicked() {
+            match check_up_to_date() {
+                Ok(us) => {
+                    match &us {
+                        UpdateStatus::Ok => {
+                            info!("Up to date!");
+                        }
+                        UpdateStatus::NeedsUpdate(latest) => {
+                            info!(
+                                "Update available to version {}",
+                                latest.tag_name
+                            );
+                        }
+                    }
+                    *update_status = Some(us);
+                }
+                Err(e) => {
+                    error!("Failed to fetch latest release information: {e}");
+                }
+            }
+        }
     });
     ui.label("Hint: pop the JWT into Hashcat to check for weak keys");
 }
