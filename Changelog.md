@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Added dark/light theme switcher
 
 ### Changed
+* Set default window size to 1280x1024
 
 ### Deprecated
 

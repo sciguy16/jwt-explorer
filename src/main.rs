@@ -313,7 +313,10 @@ pub fn main() {
         WriteLogger::new(LevelFilter::Info, write_logger_config, LOG.clone()),
     ]);
 
-    let native_options = eframe::NativeOptions::default();
+    let native_options = eframe::NativeOptions {
+        initial_window_size: Some((1280.0, 1024.0).into()),
+        ..Default::default()
+    };
     eframe::run_native(
         &WINDOW_TITLE,
         native_options,
