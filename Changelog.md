@@ -6,6 +6,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Added
+
+### Changed
+
+### Deprecated
+
+### Removed
+
+### Fixed
+
+### Security
+
+## [v0.5.0] - 2022-07-09
+### Added
 * Added editable human-readable versions of `iat` and `exp` fields
 * Added dark/light theme switcher
 * Added update checking button
@@ -18,14 +31,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 * Set default window size to 1280x1024
 * GUI elements now fill the width of the window
-
-### Deprecated
-
-### Removed
-
-### Fixed
-
-### Security
 
 ## [v0.4.1] - 2022-07-07
 ### Added
