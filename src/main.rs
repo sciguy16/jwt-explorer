@@ -189,93 +189,33 @@ impl AppState {
 
 impl eframe::App for AppState {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
-        let Self {
-            jwt_input,
-            jwt_header,
-            jwt_claims,
-            original_signature,
-            secret,
-            pubkey,
-            privkey,
-            keypair_display_state,
-            signature_type,
-            attacks,
-            win_size,
-            clipboard,
-            iat_string,
-            iat_ok,
-            exp_string,
-            exp_ok,
-            update_status,
-        } = self;
-
         egui::CentralPanel::default().show(ctx, |ui| {
-            gui::header(ui, update_status);
-            gui::jwt_entry(
-                ui,
-                jwt_input,
-                secret,
-                pubkey,
-                jwt_header,
-                jwt_claims,
-                original_signature,
-                iat_string,
-                iat_ok,
-                exp_string,
-                exp_ok,
-            );
+            gui::header(ui, self);
+            gui::jwt_entry(ui, self);
 
             let half_width = ui.available_width() / 2.0;
-            let half_height = win_size.y / 2.5;
+            let half_height = self.win_size.y / 2.5;
 
             // Upper/middle section of window with details and controls
             ui.horizontal(|ui| {
-                gui::header_and_claims(
-                    ui,
-                    half_width,
-                    half_height,
-                    jwt_header,
-                    jwt_claims,
-                );
+                gui::header_and_claims(ui, half_width, half_height, self);
                 ui.vertical(|ui| {
                     ui.group(|ui| {
                         // Controls
-                        match signature_type.class(jwt_header) {
+                        match self.signature_type.class(&self.jwt_header) {
                             SignatureClass::Hmac => {
-                                gui::controls::secret(ui, secret)
+                                gui::controls::secret(ui, &mut self.secret)
                             }
-                            SignatureClass::Pubkey => gui::controls::keypair(
-                                ui,
-                                keypair_display_state,
-                                pubkey,
-                                privkey,
-                            ),
+                            SignatureClass::Pubkey => {
+                                gui::controls::keypair(ui, self)
+                            }
                             _ => (),
                         }
 
-                        gui::controls::attacks(
-                            ui, attacks, jwt_header, jwt_claims,
-                        );
-                        gui::controls::iat_and_exp_time(
-                            ui, jwt_claims, iat_string, iat_ok, exp_string,
-                            exp_ok,
-                        );
-                        gui::controls::signature_type(
-                            ui,
-                            signature_type,
-                            jwt_header,
-                        );
-                        gui::controls::encode_and_sign(
-                            ui,
-                            jwt_header,
-                            jwt_claims,
-                            original_signature,
-                            secret,
-                            pubkey,
-                            privkey,
-                            *signature_type,
-                            attacks,
-                        );
+                        gui::controls::attacks(ui, self);
+                        gui::controls::iat_and_exp_time(ui, self);
+                        gui::controls::signature_type(ui, self);
+                        gui::controls::encode_and_sign(ui, self);
                     });
                 });
             });
@@ -286,7 +226,11 @@ impl eframe::App for AppState {
                     ui.group(|ui| {
                         ui.set_max_width(half_width);
                         ui.set_min_height(half_height);
-                        gui::attack_list(ui, attacks, clipboard);
+                        gui::attack_list(
+                            ui,
+                            &mut self.attacks,
+                            &mut self.clipboard,
+                        );
                     });
                 });
                 ui.vertical(|ui| {
@@ -298,7 +242,7 @@ impl eframe::App for AppState {
             });
         });
 
-        *win_size = ctx.available_rect().max;
+        self.win_size = ctx.available_rect().max;
     }
 }
 

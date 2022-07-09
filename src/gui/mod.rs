@@ -1,6 +1,5 @@
-use crate::newtypes::*;
 use crate::update_checker::{check_up_to_date, UpdateStatus};
-use crate::{Attack, Clipboard, LOG};
+use crate::{AppState, Attack, Clipboard, LOG};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use eframe::egui::{
     self, Button, Color32, RichText, ScrollArea, TextEdit, TextStyle, Ui,
@@ -11,14 +10,14 @@ pub mod controls;
 // Button::new(RichText::new("Copy all").color(Color32::WHITE))
 // .fill(Color32::from_rgb(0, 0, 0xc0));
 
-pub fn header(ui: &mut Ui, update_status: &mut Option<UpdateStatus>) {
+pub(crate) fn header(ui: &mut Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         ui.heading("JWT Explorer ");
         ui.label(&*crate::BUILD_HEADER);
         ui.hyperlink("https://github.com/sciguy16/jwt-explorer");
         egui::widgets::global_dark_light_mode_buttons(ui);
 
-        let update_button = match update_status {
+        let update_button = match &state.update_status {
             None => Button::new("Check for updates"),
             Some(UpdateStatus::Ok) => {
                 Button::new(RichText::new("Up to date!").color(Color32::BLACK))
@@ -47,7 +46,7 @@ pub fn header(ui: &mut Ui, update_status: &mut Option<UpdateStatus>) {
                             );
                         }
                     }
-                    *update_status = Some(us);
+                    state.update_status = Some(us);
                 }
                 Err(e) => {
                     error!("Failed to fetch latest release information: {e}");
@@ -59,31 +58,28 @@ pub fn header(ui: &mut Ui, update_status: &mut Option<UpdateStatus>) {
 }
 
 #[allow(clippy::too_many_arguments)]
-pub fn jwt_entry(
-    ui: &mut Ui,
-    jwt_input: &mut String,
-    secret: &mut Secret, // needs &mut for secret guessing attack
-    public_key: &PubKey,
-    jwt_header: &mut Header,
-    jwt_claims: &mut Claims,
-    original_signature: &mut String,
-    iat: &mut String,
-    iat_ok: &mut bool,
-    exp: &mut String,
-    exp_ok: &mut bool,
-) {
+pub(crate) fn jwt_entry(ui: &mut Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         ui.label("JWT: ");
-        ui.add(TextEdit::singleline(jwt_input).font(TextStyle::Monospace));
+        ui.add(
+            TextEdit::singleline(&mut state.jwt_input)
+                .font(TextStyle::Monospace),
+        );
         if ui.button("Decode").clicked() {
-            if secret.is_empty() {
-                crate::attack::try_some_common_secrets(jwt_input, secret);
+            if state.secret.is_empty() {
+                crate::attack::try_some_common_secrets(
+                    &state.jwt_input,
+                    &mut state.secret,
+                );
             }
-            let decoded =
-                crate::decoder::decode_jwt(jwt_input, secret, public_key);
-            *jwt_header = decoded.header;
-            *jwt_claims = decoded.claims;
-            *original_signature = decoded.signature;
+            let decoded = crate::decoder::decode_jwt(
+                &state.jwt_input,
+                &state.secret,
+                &state.pubkey,
+            );
+            state.jwt_header = decoded.header;
+            state.jwt_claims = decoded.claims;
+            state.original_signature = decoded.signature;
             if decoded.signature_valid {
                 info!("Valid signature!");
             } else {
@@ -92,22 +88,22 @@ pub fn jwt_entry(
 
             // set iat and exp strings
             if let Some(times) = decoded.times {
-                *iat = DateTime::<Utc>::from_utc(
+                state.iat_string = DateTime::<Utc>::from_utc(
                     NaiveDateTime::from_timestamp(times.iat, 0),
                     Utc,
                 )
                 .to_string();
-                *exp = DateTime::<Utc>::from_utc(
+                state.exp_string = DateTime::<Utc>::from_utc(
                     NaiveDateTime::from_timestamp(times.exp, 0),
                     Utc,
                 )
                 .to_string();
-                *iat_ok = true;
-                *exp_ok = true;
+                state.iat_ok = true;
+                state.exp_ok = true;
             }
         }
         if ui.button("Demo").clicked() {
-            *jwt_input = concat!(
+            state.jwt_input = concat!(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",
                 ".",
                 "eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6",
@@ -122,12 +118,11 @@ pub fn jwt_entry(
     });
 }
 
-pub fn header_and_claims(
+pub(crate) fn header_and_claims(
     ui: &mut Ui,
     half_width: f32,
     half_height: f32,
-    jwt_header: &mut Header,
-    jwt_claims: &mut Claims,
+    state: &mut AppState,
 ) {
     ui.vertical(|ui| {
         ui.group(|ui| {
@@ -137,10 +132,12 @@ pub fn header_and_claims(
                 .id_source("jwt_header")
                 .show(ui, |ui| {
                     ui.add(
-                        TextEdit::multiline(jwt_header.as_mut()).code_editor(),
+                        TextEdit::multiline(state.jwt_header.as_mut())
+                            .code_editor(),
                     );
                     ui.add(
-                        TextEdit::multiline(jwt_claims.as_mut()).code_editor(),
+                        TextEdit::multiline(state.jwt_claims.as_mut())
+                            .code_editor(),
                     );
                 });
         });
