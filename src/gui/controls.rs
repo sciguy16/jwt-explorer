@@ -1,7 +1,7 @@
+use super::copy_button;
 use crate::attack::Attack;
 use crate::decoder::IatAndExp;
 use crate::json_editor::{update_alg, update_time, TimeOffset};
-use crate::newtypes::*;
 use crate::signature::{generate_keypair, SignatureClass, SignatureTypes};
 use crate::{log_err, AppState};
 use chrono::{DateTime, FixedOffset, NaiveDateTime, Utc};
@@ -9,12 +9,14 @@ use eframe::egui::{self, Color32, Label, RichText, TextEdit, TextStyle, Ui};
 use std::time::Duration;
 use strum::IntoEnumIterator;
 
-pub fn secret(ui: &mut Ui, secret: &mut Secret) {
+pub(crate) fn secret(ui: &mut Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         ui.label("Secret: ");
         ui.add(
-            TextEdit::singleline(secret.as_mut()).font(TextStyle::Monospace),
+            TextEdit::singleline(state.secret.as_mut())
+                .font(TextStyle::Monospace),
         );
+        copy_button(ui, &mut state.clipboard, state.secret.as_ref());
     });
 }
 
@@ -39,6 +41,8 @@ pub(crate) fn keypair(ui: &mut Ui, state: &mut AppState) {
         if inp_state.lost_focus() {
             state.keypair_display_state.pubkey_focused = false;
         }
+
+        copy_button(ui, &mut state.clipboard, state.pubkey.as_ref());
     });
     ui.horizontal(|ui| {
         ui.label("Private: ");
@@ -54,6 +58,8 @@ pub(crate) fn keypair(ui: &mut Ui, state: &mut AppState) {
         if inp_state.lost_focus() {
             state.keypair_display_state.privkey_focused = false;
         }
+
+        copy_button(ui, &mut state.clipboard, state.privkey.as_ref());
     });
 }
 
@@ -77,9 +83,6 @@ pub(crate) fn attacks(ui: &mut Ui, state: &mut AppState) {
     });
 }
 
-// Clippy doesn't like the &mut String, even though it's necessary for
-// the egui TextEdit
-#[allow(clippy::ptr_arg)]
 pub(crate) fn iat_and_exp_time(ui: &mut Ui, state: &mut AppState) {
     use TimeOffset::*;
 
@@ -95,11 +98,11 @@ pub(crate) fn iat_and_exp_time(ui: &mut Ui, state: &mut AppState) {
                 RichText::new("iat:").text_style(TextStyle::Monospace),
             ));
             let response = ui.add({
-                TextEdit::singleline(&mut state.iat_string).text_color(
+                TextEdit::singleline(&mut state.iat_string).text_color_opt(
                     if state.iat_ok {
-                        Color32::BLACK
+                        None
                     } else {
-                        Color32::RED
+                        Some(Color32::RED)
                     },
                 )
             });
@@ -118,6 +121,7 @@ pub(crate) fn iat_and_exp_time(ui: &mut Ui, state: &mut AppState) {
                     }
                 }
             }
+            copy_button(ui, &mut state.clipboard, &state.iat_string);
         });
 
         ui.horizontal(|ui| {
@@ -171,11 +175,11 @@ pub(crate) fn iat_and_exp_time(ui: &mut Ui, state: &mut AppState) {
                 RichText::new("exp:").text_style(TextStyle::Monospace),
             ));
             let response = ui.add({
-                TextEdit::singleline(&mut state.exp_string).text_color(
+                TextEdit::singleline(&mut state.exp_string).text_color_opt(
                     if state.exp_ok {
-                        Color32::BLACK
+                        None
                     } else {
-                        Color32::RED
+                        Some(Color32::RED)
                     },
                 )
             });
@@ -194,6 +198,8 @@ pub(crate) fn iat_and_exp_time(ui: &mut Ui, state: &mut AppState) {
                     }
                 }
             }
+
+            copy_button(ui, &mut state.clipboard, &state.exp_string);
         });
 
         ui.horizontal(|ui| {

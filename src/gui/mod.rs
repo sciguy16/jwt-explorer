@@ -7,8 +7,11 @@ use eframe::egui::{
 
 pub mod controls;
 
-// Button::new(RichText::new("Copy all").color(Color32::WHITE))
-// .fill(Color32::from_rgb(0, 0, 0xc0));
+fn copy_button(ui: &mut Ui, clipboard: &mut Clipboard, content: &str) {
+    if ui.button("Copy").clicked() {
+        clipboard.put(content);
+    }
+}
 
 pub(crate) fn header(ui: &mut Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
@@ -32,6 +35,7 @@ pub(crate) fn header(ui: &mut Ui, state: &mut AppState) {
             )
             .fill(Color32::RED),
         };
+
         if ui.add(update_button).clicked() {
             match check_up_to_date() {
                 Ok(us) => {
@@ -54,10 +58,10 @@ pub(crate) fn header(ui: &mut Ui, state: &mut AppState) {
             }
         }
     });
+
     ui.label("Hint: pop the JWT into Hashcat to check for weak keys");
 }
 
-#[allow(clippy::too_many_arguments)]
 pub(crate) fn jwt_entry(ui: &mut Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         ui.label("JWT: ");
@@ -65,6 +69,7 @@ pub(crate) fn jwt_entry(ui: &mut Ui, state: &mut AppState) {
             TextEdit::singleline(&mut state.jwt_input)
                 .font(TextStyle::Monospace),
         );
+
         if ui.button("Decode").clicked() {
             if state.secret.is_empty() {
                 crate::attack::try_some_common_secrets(
@@ -102,6 +107,9 @@ pub(crate) fn jwt_entry(ui: &mut Ui, state: &mut AppState) {
                 state.exp_ok = true;
             }
         }
+
+        copy_button(ui, &mut state.clipboard, &state.jwt_input);
+
         if ui.button("Demo").clicked() {
             state.jwt_input = concat!(
                 "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9",

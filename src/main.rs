@@ -206,7 +206,7 @@ impl eframe::App for AppState {
                         // Controls
                         match self.signature_type.class(&self.jwt_header) {
                             SignatureClass::Hmac => {
-                                gui::controls::secret(ui, &mut self.secret)
+                                gui::controls::secret(ui, self)
                             }
                             SignatureClass::Pubkey => {
                                 gui::controls::keypair(ui, self)
