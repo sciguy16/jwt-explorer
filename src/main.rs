@@ -3,7 +3,9 @@
 #![forbid(unsafe_code)]
 
 use copypasta::{ClipboardContext, ClipboardProvider};
-use eframe::egui::{self, FontData, FontDefinitions, FontFamily, Pos2};
+use eframe::egui::{
+    self, Event, FontData, FontDefinitions, FontFamily, Key, Pos2,
+};
 use lazy_static::lazy_static;
 use serde::Deserialize;
 use simplelog::{
@@ -188,7 +190,7 @@ impl AppState {
 }
 
 impl eframe::App for AppState {
-    fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &egui::Context, frame: &mut eframe::Frame) {
         egui::CentralPanel::default().show(ctx, |ui| {
             gui::header(ui, self);
             gui::jwt_entry(ui, self);
@@ -244,6 +246,20 @@ impl eframe::App for AppState {
                 });
             });
         });
+
+        // Handle ctrl+q for exit
+        for event in &ctx.input().events {
+            if let Event::Key {
+                key,
+                pressed,
+                modifiers,
+            } = event
+            {
+                if *key == Key::Q && modifiers.command && *pressed {
+                    frame.quit();
+                }
+            }
+        }
 
         self.win_size = ctx.available_rect().max;
     }
