@@ -173,6 +173,15 @@ pub(crate) fn attack_list(
     attacks: &mut Vec<Attack>,
     clipboard: &mut Clipboard,
 ) {
+    use csv::Writer;
+    use serde::Serialize;
+
+    #[derive(Serialize)]
+    struct AttackCsv<'a> {
+        attack: &'a str,
+        payload: &'a str,
+    }
+
     ui.horizontal(|ui| {
         ui.label("Generated attack payloads:");
         let copy_button =
@@ -187,6 +196,31 @@ pub(crate) fn attack_list(
             }
 
             clipboard.put(&tokenlist);
+        }
+        let csv_copy_button =
+            Button::new(RichText::new("Copy as CSV").color(Color32::WHITE))
+                .fill(Color32::from_rgb(0, 0, 0xc0));
+        if ui.add(csv_copy_button).clicked() {
+            let cap: usize = attacks.iter().map(|a| a.token.len()).sum();
+            let mut tokenlist = String::with_capacity(cap + attacks.len());
+            for atk in attacks.iter() {
+                tokenlist.push_str(&atk.token);
+                tokenlist.push('\n');
+            }
+
+            let mut csv_output = Writer::from_writer(Vec::new());
+            for atk in attacks.iter().map(|atk| AttackCsv {
+                attack: &atk.name,
+                payload: &atk.token,
+            }) {
+                csv_output
+                    .serialize(atk)
+                    .expect("Failed to serialise token");
+            }
+
+            clipboard.put(&String::from_utf8_lossy(
+                &csv_output.into_inner().expect("Failed to write CSV data"),
+            ));
         }
         let clear_button =
             Button::new(RichText::new("Clear").color(Color32::WHITE))
