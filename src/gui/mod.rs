@@ -139,16 +139,30 @@ pub(crate) fn header_and_claims(
             ScrollArea::vertical()
                 .id_source("jwt_header")
                 .show(ui, |ui| {
-                    ui.add(
-                        TextEdit::multiline(state.jwt_header.as_mut())
-                            .code_editor()
-                            .desired_width(ui.available_width()),
-                    );
-                    ui.add(
-                        TextEdit::multiline(state.jwt_claims.as_mut())
-                            .code_editor()
-                            .desired_width(ui.available_width()),
-                    );
+                    ui.horizontal(|ui| {
+                        copy_button(
+                            ui,
+                            &mut state.clipboard,
+                            state.jwt_header.as_ref(),
+                        );
+                        ui.add(
+                            TextEdit::multiline(state.jwt_header.as_mut())
+                                .code_editor()
+                                .desired_width(ui.available_width()),
+                        );
+                    });
+                    ui.horizontal(|ui| {
+                        copy_button(
+                            ui,
+                            &mut state.clipboard,
+                            state.jwt_claims.as_ref(),
+                        );
+                        ui.add(
+                            TextEdit::multiline(state.jwt_claims.as_mut())
+                                .code_editor()
+                                .desired_width(ui.available_width()),
+                        );
+                    });
                 });
         });
     });
