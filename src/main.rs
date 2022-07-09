@@ -239,7 +239,7 @@ impl eframe::App for AppState {
                     ui.group(|ui| {
                         ui.set_min_height(half_height);
                         ui.set_width(ui.available_width());
-                        gui::log_list(ui);
+                        gui::log_list(ui, self);
                     });
                 });
             });

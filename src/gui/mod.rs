@@ -271,9 +271,15 @@ pub(crate) fn attack_list(
     );
 }
 
-pub fn log_list(ui: &mut Ui) {
+pub(crate) fn log_list(ui: &mut Ui, state: &mut AppState) {
     ui.horizontal(|ui| {
         ui.label("Log");
+
+        if ui.button("Copy").clicked() {
+            let logs = LOG.inner.read().unwrap().join("\n");
+            state.clipboard.put(&logs);
+        }
+
         let clear_button =
             Button::new(RichText::new("Clear").color(Color32::WHITE))
                 .fill(Color32::from_rgb(0xa0, 0, 0));
