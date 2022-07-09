@@ -61,21 +61,20 @@ mod test {
     /// only the fields we care about for brevity
     const API_RESP: &str = r###"
 [
-  {
-    "url": "https://api.github.com/repos/sciguy16/jwt-explorer/releases/71516242",
-    "assets_url": "https://api.github.com/repos/sciguy16/jwt-explorer/releases/71516242/assets",
-    "html_url": "https://github.com/sciguy16/jwt-explorer/releases/tag/v0.4.1",
-    "id": 71516242,
-    "node_id": "RE_kwDOGG7cPs4EQ0BS",
-    "tag_name": "v0.4.1",
-    "target_commitish": "06503ba6f1035402c78cef06ff2ba1e809501987",
-    "name": "v0.4.1",
-    "draft": false,
-    "prerelease": false,
-    "created_at": "2022-07-07T20:51:36Z",
-    "published_at": "2022-07-07T21:01:54Z",
-    "body": "## [v0.4.1] - 2022-07-07\n### Added\n* Added null signature attack\n\n### Security\n* Updated dependencies, removing security bugs in openssl, xcb, and nix"
-  }
+ {
+  "url": "https://api.github.com/repos/sciguy16/jwt-explorer/releases/71516242",
+  "html_url": "https://github.com/sciguy16/jwt-explorer/releases/tag/v0.4.1",
+  "id": 71516242,
+  "node_id": "RE_kwDOGG7cPs4EQ0BS",
+  "tag_name": "v0.4.1",
+  "target_commitish": "06503ba6f1035402c78cef06ff2ba1e809501987",
+  "name": "v0.4.1",
+  "draft": false,
+  "prerelease": false,
+  "created_at": "2022-07-07T20:51:36Z",
+  "published_at": "2022-07-07T21:01:54Z",
+  "body": "## [v0.4.1] - 2022-07-07"
+ }
 ]
 "###;
 
